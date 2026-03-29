@@ -14,6 +14,7 @@ REQUIRED_PATHS = [
     "package.json",
     "package-lock.json",
     ".github/workflows/validate.yml",
+    ".github/workflows/agent-pr-verify.yml",
     ".github/workflows/github-ops.yml",
     ".github/workflows/copilot-assign.yml",
     ".github/workflows/copilot-watchdog.yml",

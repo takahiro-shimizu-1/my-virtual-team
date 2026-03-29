@@ -24,9 +24,15 @@ Smoke tests は以下を確認する。
 
 ### `validate` (`.github/workflows/validate.yml`)
 
-- **トリガー**: `master` / `codex/**` / `copilot/**` / `claude/**` / `codex-agent/**` への push
+- **トリガー**: `master` / `codex/**` への push
 - **役割**: `npm run ci:verify` を実行し、ブートストラップ・ユニットテスト・スモークテストを含む v4 契約全体を検証する
 - **Smoke test の位置付け**: `ci:verify` の中で `scripts/github-event-bridge.py` を `--dry-run` で呼び出し、Issue / Issue コメント / synthetic PR の 3 シナリオを検証する
+
+### `agent-pr-verify` (`.github/workflows/agent-pr-verify.yml`)
+
+- **トリガー**: `Copilot coding agent` の `workflow_run.completed`
+- **役割**: AI agent が作った PR head を default-branch 文脈で checkout し、`npm run ci:verify` を実行する
+- **期待結果**: `action_required` になりやすい bot branch push の代わりに、deterministic な PR verification が走る
 
 ### `github-ops` (`.github/workflows/github-ops.yml`)
 

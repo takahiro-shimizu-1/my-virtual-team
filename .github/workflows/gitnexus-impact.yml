@@ -2,7 +2,7 @@ name: gitnexus-impact
 
 on:
   workflow_run:
-    workflows: ["validate"]
+    workflows: ["agent-pr-verify"]
     types: [completed]
 
 permissions:

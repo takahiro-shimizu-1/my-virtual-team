@@ -5,9 +5,6 @@ on:
     branches:
       - master
       - "codex/**"
-      - "copilot/**"
-      - "claude/**"
-      - "codex-agent/**"
 
 jobs:
   validate:

@@ -2,7 +2,7 @@ name: claude-review
 
 on:
   workflow_run:
-    workflows: ["validate", "Copilot coding agent"]
+    workflows: ["agent-pr-verify"]
     types: [completed]
 
 permissions:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == ''
+    if: github.event.workflow_run.conclusion == 'success'
     env:
       VIRTUAL_TEAM_PR_AGENT_MENTION: ${{ vars.VIRTUAL_TEAM_PR_AGENT_MENTION }}
     steps:

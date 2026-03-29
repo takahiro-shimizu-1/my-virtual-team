@@ -44,7 +44,7 @@
 ### 2. Claude on GitHub
 
 - [x] issue labeled で Claude が atomic / decomposition を判定
-- [x] PR opened / synchronize で Claude review
+- [x] managed AI PR verify 成功後に Claude review handoff
 - [x] review / CI success 後の auto-merge
 - [x] Copilot `action_required` を再実行する watchdog
 

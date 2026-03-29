@@ -1,0 +1,115 @@
+name: agent-pr-verify
+
+on:
+  workflow_run:
+    workflows: ["Copilot coding agent"]
+    types: [completed]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+    steps:
+      - name: Resolve PR and head SHA
+        id: pr
+        run: |
+          if ! echo "${HEAD_BRANCH}" | grep -Eq '^(copilot|claude|codex-agent|codex)/'; then
+            exit 0
+          fi
+
+          PR_JSON=$(gh pr list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --head "${HEAD_BRANCH}" \
+            --json number,headRefOid \
+            --jq '.[0]')
+
+          if [ -z "$PR_JSON" ] || [ "$PR_JSON" = "null" ]; then
+            exit 0
+          fi
+
+          PR_NUMBER=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["number"])')
+          HEAD_SHA=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["headRefOid"])')
+
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create check run
+        if: steps.pr.outputs.number != ''
+        id: check
+        run: |
+          CHECK_ID=$(gh api \
+            repos/${{ github.repository }}/check-runs \
+            -X POST \
+            -F name='agent-pr-verify' \
+            -F head_sha='${{ steps.pr.outputs.head_sha }}' \
+            -F status='in_progress' \
+            -F details_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --jq '.id')
+          echo "id=$CHECK_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR head
+        if: steps.pr.outputs.number != ''
+        uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ steps.pr.outputs.number }}/head
+
+      - name: Setup Node
+        if: steps.pr.outputs.number != ''
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        if: steps.pr.outputs.number != ''
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: steps.pr.outputs.number != ''
+        run: npm ci
+
+      - name: Verify PR branch
+        if: steps.pr.outputs.number != ''
+        id: verify
+        continue-on-error: true
+        run: npm run ci:verify
+
+      - name: Finalize check run
+        if: steps.pr.outputs.number != ''
+        run: |
+          if [ "${{ steps.verify.outcome }}" = "success" ]; then
+            CONCLUSION=success
+            TITLE="agent-pr-verify passed"
+            SUMMARY="ci:verify completed successfully for PR #${{ steps.pr.outputs.number }}."
+          else
+            CONCLUSION=failure
+            TITLE="agent-pr-verify failed"
+            SUMMARY="ci:verify failed for PR #${{ steps.pr.outputs.number }}. See the workflow run for details."
+          fi
+
+          gh api \
+            repos/${{ github.repository }}/check-runs/${{ steps.check.outputs.id }} \
+            -X PATCH \
+            -F status='completed' \
+            -F conclusion="$CONCLUSION" \
+            -F completed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -F output[title]="$TITLE" \
+            -F output[summary]="$SUMMARY"
+
+          if [ "$CONCLUSION" != "success" ]; then
+            gh pr comment "${{ steps.pr.outputs.number }}" \
+              --repo "${{ github.repository }}" \
+              --body "agent-pr-verify failed. Inspect ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            exit 1
+          fi
