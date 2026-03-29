@@ -132,6 +132,8 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 
 issue に `claude` または `codex` label が付いた場合、workflow は対応する custom agent を `gh agent-task create --custom-agent ...` で起動する。`auto` / `copilot` は `vt-implementation-auto` を使う。
 
+ただし `issue` route で `auto` を使う場合は capability policy が介在し、計画系やレビュー系は `vt-implementation-claude` を選ぶ。
+
 `Gemini` はこの repo では local runner を正規 route とする。GitHub native coding agent 側には載せていない。
 
 実運用上の正規 path は 1 つである。

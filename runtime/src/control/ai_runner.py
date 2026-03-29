@@ -9,6 +9,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from control.execution_policy import recommend_execution
 from control.task_store import claim_task, complete_task, fail_task, get_task
 from registry.catalog import get_agent
 
@@ -56,6 +57,20 @@ def _target_paths(task: dict, explicit_paths: list[str] | None = None) -> list[s
     if isinstance(target_paths, list):
         return [path for path in target_paths if isinstance(path, str) and path]
     return []
+
+
+def _execution_recommendation(task: dict) -> dict:
+    payload = task.get("payload", {}) or {}
+    recommendation = payload.get("execution_recommendation")
+    if isinstance(recommendation, dict) and recommendation:
+        return recommendation
+    return recommend_execution(
+        prompt=payload.get("request") or task.get("description") or task.get("title") or "",
+        command=payload.get("department_command", ""),
+        matched_skill=payload.get("skill_id", ""),
+        workflow_name=payload.get("workflow_name", "single-agent-fast-path"),
+        review_mode=bool(payload.get("review_mode")),
+    )
 
 
 def _repo_path_exists(path: str) -> bool:
@@ -131,19 +146,23 @@ def resolve_local_provider(
     *,
     require_available: bool = True,
     require_ready: bool = False,
+    candidates: list[str] | None = None,
 ) -> ProviderSpec:
     requested = (provider or "auto").strip().lower()
     if requested and requested != "auto" and requested not in PROVIDER_ORDER:
         raise RuntimeError(f"unsupported provider: {requested}")
 
     if requested == "auto":
-        preferred = (os.environ.get("VIRTUAL_TEAM_LOCAL_AI_PROVIDER", "") or "").strip().lower()
-        candidates = [preferred] + [name for name in PROVIDER_ORDER if name != preferred] if preferred else list(PROVIDER_ORDER)
+        if candidates:
+            candidate_names = [name for name in candidates if name in PROVIDER_ORDER]
+        else:
+            preferred = (os.environ.get("VIRTUAL_TEAM_LOCAL_AI_PROVIDER", "") or "").strip().lower()
+            candidate_names = [preferred] + [name for name in PROVIDER_ORDER if name != preferred] if preferred else list(PROVIDER_ORDER)
     else:
-        candidates = [requested]
+        candidate_names = [requested]
 
     last_spec: ProviderSpec | None = None
-    for name in candidates:
+    for name in candidate_names:
         command = _command_from_env(name)
         spec = ProviderSpec(
             name=name,
@@ -174,8 +193,8 @@ def resolve_local_provider(
         return last_spec
     if requested == "auto":
         if require_ready:
-            raise RuntimeError("no local AI runner is ready; tried claude, codex, gemini")
-        raise RuntimeError("no local AI runner is available; tried claude, codex, gemini")
+            raise RuntimeError(f"no local AI runner is ready; tried {', '.join(candidate_names)}")
+        raise RuntimeError(f"no local AI runner is available; tried {', '.join(candidate_names)}")
     if require_ready:
         raise RuntimeError(f"requested provider is not ready: {requested}")
     raise RuntimeError(f"requested provider is not available: {requested}")
@@ -205,7 +224,11 @@ def preview_ai_task(
     provider: str = "auto",
     output_paths: list[str] | None = None,
 ) -> dict:
-    spec = resolve_local_provider(provider, require_available=False)
+    recommendation = _execution_recommendation(task)
+    candidate_chain = []
+    if provider == "auto":
+        candidate_chain = [recommendation.get("local_provider", "")] + recommendation.get("local_fallback_providers", [])
+    spec = resolve_local_provider(provider, require_available=False, candidates=candidate_chain)
     return {
         "status": "dry_run",
         "task_id": task.get("task_id", "dry-run"),
@@ -216,6 +239,7 @@ def preview_ai_task(
         "provider_reason": spec.readiness_reason,
         "provider_command": spec.command,
         "available_providers": available_local_providers(),
+        "recommended_execution": recommendation,
         "prompt": _build_prompt(task, output_paths),
         "output_paths": _target_paths(task, output_paths),
     }
@@ -368,7 +392,16 @@ def run_ai_task(
     output_paths: list[str] | None = None,
 ) -> dict:
     task = get_task(conn, task_id)
-    spec = resolve_local_provider(provider, require_available=not dry_run, require_ready=not dry_run)
+    recommendation = _execution_recommendation(task)
+    candidate_chain = []
+    if provider == "auto":
+        candidate_chain = [recommendation.get("local_provider", "")] + recommendation.get("local_fallback_providers", [])
+    spec = resolve_local_provider(
+        provider,
+        require_available=not dry_run,
+        require_ready=not dry_run,
+        candidates=candidate_chain,
+    )
     effective_runner_id = runner_id or f"{spec.name}-local"
     if effective_runner_id == "local-ai":
         effective_runner_id = f"{spec.name}-local"

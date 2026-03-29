@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from control.execution_policy import recommend_execution
 from control.router import context_for_agent, route_request
 from registry.catalog import get_agent
 
@@ -30,6 +31,15 @@ def _phase_spec(
     review_mode: bool = False,
 ) -> dict:
     agent = get_agent(agent_id) or {}
+    execution_recommendation = recommend_execution(
+        prompt=request,
+        command=command,
+        matched_skill=skill_id,
+        workflow_name=workflow_name,
+        review_mode=review_mode,
+        approval_required=approval_required,
+        approval_policy=agent.get("approval_policy", ""),
+    )
     return {
         "agent_id": agent_id,
         "title": title,
@@ -46,6 +56,7 @@ def _phase_spec(
             "skill_id": skill_id or f"agent:{agent_id}",
             "required_context": required_context,
             "review_mode": review_mode,
+            "execution_recommendation": execution_recommendation,
         },
     }
 
@@ -185,4 +196,3 @@ def decompose_request(prompt: str, command: str | None = None) -> dict:
         "workflow_name": workflow["workflow_name"],
         "tasks": workflow["phases"],
     }
-

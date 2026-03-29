@@ -40,6 +40,18 @@ class RuntimeFlowTests(unittest.TestCase):
         route = route_request("API設計レビューをお願いします", "development")
         self.assertEqual(route["matched_skill"]["name"], "api-design-review")
         self.assertIn(route["owner"]["agent_id"], {"kirishima-ren", "kujo-haru"})
+        self.assertEqual(route["execution_recommendation"]["local_provider"], "claude")
+        self.assertEqual(route["execution_recommendation"]["github_profile"], "vt-implementation-claude")
+
+    def test_route_recommends_gemini_for_research_tasks(self) -> None:
+        route = route_request("競合調査レポートをまとめて", "research")
+        self.assertEqual(route["execution_recommendation"]["local_provider"], "gemini")
+        self.assertEqual(route["execution_recommendation"]["preferred_surface"], "local")
+
+    def test_route_recommends_native_auto_for_simple_implementation(self) -> None:
+        route = route_request("README.md に quickstart を追加して", "admin")
+        self.assertEqual(route["execution_recommendation"]["github_profile"], "vt-implementation-auto")
+        self.assertEqual(route["execution_recommendation"]["local_provider"], "codex")
 
     def test_plan_request_builds_sequential_workflow(self) -> None:
         planned = plan_request(
@@ -190,6 +202,28 @@ class RuntimeFlowTests(unittest.TestCase):
         self.assertFalse(preview["provider_available"])
         self.assertFalse(preview["provider_ready"])
         self.assertEqual(preview["output_paths"], ["README.md"])
+
+    def test_ai_preview_auto_includes_recommended_execution(self) -> None:
+        task = {
+            "task_id": "dry-run",
+            "title": "調査レポートをまとめる",
+            "agent_id": "tachibana-seiji",
+            "payload": {
+                "request": "競合調査レポートをまとめる",
+                "department_command": "research",
+                "target_paths": ["docs/report.md"],
+            },
+        }
+        with patch(
+            "control.ai_runner.resolve_local_provider",
+            return_value=ProviderSpec("gemini", "Gemini CLI", ["npx", "-y", "@google/gemini-cli"], True, False, "auth missing"),
+        ), patch(
+            "control.ai_runner.available_local_providers",
+            return_value=[],
+        ):
+            preview = preview_ai_task(task, runner_id="local-ai", provider="auto")
+        self.assertEqual(preview["recommended_execution"]["local_provider"], "gemini")
+        self.assertEqual(preview["provider"], "gemini")
 
     def test_ai_runner_completes_task_with_claude_provider(self) -> None:
         task = create_task(

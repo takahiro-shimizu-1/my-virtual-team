@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from control.execution_policy import recommend_execution
 from registry.catalog import (
     department_for_command,
     get_agent,
@@ -146,6 +147,18 @@ def route_request(prompt: str, command: str | None = None, top_n: int = 3) -> di
         approval_required = any(_matches(prompt, keyword) for keyword in approval_keywords)
 
     required_context = _paths_for_agent(owner["agent_id"], top_skill["name"] if top_skill else None) if owner else []
+    execution_recommendation = (
+        recommend_execution(
+            prompt=prompt,
+            command=normalized_command,
+            matched_skill=top_skill["name"] if top_skill else "",
+            workflow_name="single-agent-fast-path",
+            approval_required=approval_required,
+            approval_policy=owner["approval_policy"] if owner else "",
+        )
+        if owner
+        else {}
+    )
 
     return {
         "prompt": prompt,
@@ -160,9 +173,9 @@ def route_request(prompt: str, command: str | None = None, top_n: int = 3) -> di
         "approval_policy": owner["approval_policy"] if owner else "",
         "task_mode": owner["execution_mode"] if owner else "tracked_fast_path",
         "candidate_agents": ranked_agents[:top_n],
+        "execution_recommendation": execution_recommendation,
     }
 
 
 def context_for_agent(agent_id: str, skill_name: str | None = None) -> list[str]:
     return _paths_for_agent(agent_id, skill_name)
-

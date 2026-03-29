@@ -43,6 +43,7 @@ npm run runtime:task -- start --command development --prompt "API設計レビュ
 ### AI 実行
 
 local の AI runner で doc / code を実際に生成する場合は `ai` subcommand を使う。`codex` は後方互換 alias。
+`--provider auto` は capability policy で決める。考え方は `docs/execution-policy.md`。
 
 ```bash
 npm run runtime:task -- ai --provider claude --prompt "README.md を整備して" --command admin --target-path README.md
@@ -148,6 +149,12 @@ native agent defaults:
 - review mention: repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION` or `@copilot`
 - diagnosis only: `npm run github:agent-task -- issue --issue-number <n> --follow`
 - local Gemini route: `npm run runtime:task -- ai --provider gemini ...`
+
+`auto` は capability policy を使う。
+- planning / review / strategy / security は `Claude`
+- large refactor は `Codex`
+- small implementation は GitHub native `auto`
+- research は local `Gemini` 優先
 
 定期運用 workflow:
 

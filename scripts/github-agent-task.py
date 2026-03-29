@@ -14,8 +14,11 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 if str(SRC_ROOT / "integrations") not in sys.path:
     sys.path.insert(0, str(SRC_ROOT / "integrations"))
+if str(SRC_ROOT / "control") not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT / "control"))
 
 import github_ops
+from control.execution_policy import recommend_execution
 
 LABEL_TO_CUSTOM_AGENT = {
     "auto": "vt-implementation-auto",
@@ -52,7 +55,11 @@ def _prompt_from_issue(repo: str, issue_number: int) -> tuple[str, dict]:
     return prompt, payload
 
 
-def _resolve_issue_custom_agent(issue_payload: dict, explicit_custom_agent: str | None = None) -> tuple[str, str]:
+def _resolve_issue_custom_agent(
+    issue_payload: dict,
+    prompt: str,
+    explicit_custom_agent: str | None = None,
+) -> tuple[str, str]:
     if explicit_custom_agent:
         return explicit_custom_agent, "cli"
 
@@ -77,8 +84,10 @@ def _resolve_issue_custom_agent(issue_payload: dict, explicit_custom_agent: str 
     if "copilot" in labels:
         return LABEL_TO_CUSTOM_AGENT["copilot"], "issue-label"
     if "auto" in labels:
-        return LABEL_TO_CUSTOM_AGENT["auto"], "issue-label"
-    return LABEL_TO_CUSTOM_AGENT["auto"], "default"
+        recommendation = recommend_execution(prompt=prompt)
+        return recommendation.get("github_profile", LABEL_TO_CUSTOM_AGENT["auto"]), "capability-policy"
+    recommendation = recommend_execution(prompt=prompt)
+    return recommendation.get("github_profile", LABEL_TO_CUSTOM_AGENT["auto"]), "capability-policy"
 
 
 def _run_agent_task(
@@ -143,7 +152,7 @@ def main() -> int:
 
     if args.command == "issue":
         prompt, issue_payload = _prompt_from_issue(repo, args.issue_number)
-        custom_agent, source = _resolve_issue_custom_agent(issue_payload, args.custom_agent or None)
+        custom_agent, source = _resolve_issue_custom_agent(issue_payload, prompt, args.custom_agent or None)
         result = _run_agent_task(
             prompt,
             repo=repo,
@@ -161,7 +170,11 @@ def main() -> int:
             "result": result,
         }
     else:
-        custom_agent = args.custom_agent.strip() or os.environ.get("VIRTUAL_TEAM_IMPLEMENTATION_AGENT", "").strip() or None
+        custom_agent = args.custom_agent.strip() or os.environ.get("VIRTUAL_TEAM_IMPLEMENTATION_AGENT", "").strip()
+        source = "cli" if args.custom_agent.strip() else ("env" if custom_agent else "capability-policy")
+        if not custom_agent:
+            recommendation = recommend_execution(prompt=args.text)
+            custom_agent = recommendation.get("github_profile", "") or LABEL_TO_CUSTOM_AGENT["auto"]
         result = _run_agent_task(
             args.text,
             repo=repo,
@@ -175,7 +188,7 @@ def main() -> int:
             "repo": repo,
             "prompt": args.text,
             "selected_custom_agent": custom_agent,
-            "custom_agent_source": "cli" if args.custom_agent.strip() else ("env" if custom_agent else "default"),
+            "custom_agent_source": source,
             "result": result,
         }
 

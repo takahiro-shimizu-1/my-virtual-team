@@ -39,6 +39,7 @@
   未設定時は `@copilot`
 
 GitHub native route は `auto` / `copilot` / `claude` / `codex` を扱う。`Gemini` は local runner (`runtime:task -- ai --provider gemini`) を正規 route とする。
+`auto` は capability policy で `Claude` / `Codex` / native default を選ぶ。
 
 GitHub-hosted kickoff は `VIRTUAL_TEAM_GH_USER_TOKEN` を優先し、runner 上で `gh auth login --with-token` してから native task を起動する。現在の repo ではこれを既定にしている。
 

@@ -70,24 +70,20 @@ jobs:
         uses: actions/github-script@v7
         env:
           ANALYSIS: ${{ steps.analyze.outputs.analysis }}
+          REQUESTED_LABEL: ${{ github.event.label.name }}
         with:
           script: |
             const analysis = JSON.parse(process.env.ANALYSIS || '{"atomic":true,"reason":"missing analysis","subtasks":[]}');
             const issue = context.payload.issue;
+            const requestedLabel = process.env.REQUESTED_LABEL || 'auto';
 
             if (analysis.atomic) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: `Native decomposition: atomic (${analysis.reason}). Adding \`auto\` for subscription-native execution.`,
+                body: `Native decomposition: atomic (${analysis.reason}). Requested route remains \`${requestedLabel}\`.`,
               });
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue.number,
-                labels: ['auto'],
-              }).catch(() => {});
               return;
             }
 
@@ -97,7 +93,7 @@ jobs:
                 repo: context.repo.repo,
                 title: subtask,
                 body: `Sub-issue decomposed from #${issue.number}: ${issue.title}\n\nNative workflow will route this to the repository's subscription-native coding agent path.`,
-                labels: ['auto'],
+                labels: [requestedLabel === 'gemini' ? 'auto' : requestedLabel],
               });
             }
 

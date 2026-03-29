@@ -46,6 +46,7 @@ def _command_from_comment(body: str) -> tuple[str, str] | None:
 def _route_markdown(route: dict, *, prompt: str, source_label: str) -> str:
     owner = route.get("owner") or {}
     skill = route.get("matched_skill") or {}
+    execution = route.get("execution_recommendation") or {}
     collaborators = route.get("collaborators", []) or []
     context_lines = [f"- `{path}`" for path in route.get("required_context", [])[:5]] or ["- none"]
     collaborator_lines = [
@@ -60,6 +61,7 @@ def _route_markdown(route: dict, *, prompt: str, source_label: str) -> str:
             f"- department: `{owner.get('department', route.get('preferred_department', ''))}`",
             f"- skill: `{skill.get('name', 'none')}`",
             f"- approval_required: `{str(route.get('approval_required', False)).lower()}`",
+            f"- execution: `{execution.get('preferred_surface', 'unknown')}` / `{execution.get('local_provider', 'unknown')}` / `{execution.get('github_profile', 'unknown')}`",
             "",
             "**Context**",
             *context_lines,
@@ -75,11 +77,13 @@ def _route_markdown(route: dict, *, prompt: str, source_label: str) -> str:
 
 
 def _plan_markdown(plan: dict, *, prompt: str, source_label: str) -> str:
+    execution = (plan.get("route") or {}).get("execution_recommendation") or {}
     lines = [
         f"### Virtual Team plan preview for {source_label}",
         "",
         f"- workflow: `{plan.get('workflow_name', '')}`",
         f"- phases: `{len(plan.get('tasks', []))}`",
+        f"- execution: `{execution.get('preferred_surface', 'unknown')}` / `{execution.get('local_provider', 'unknown')}` / `{execution.get('github_profile', 'unknown')}`",
         "",
     ]
     for index, task in enumerate(plan.get("tasks", []), start=1):
