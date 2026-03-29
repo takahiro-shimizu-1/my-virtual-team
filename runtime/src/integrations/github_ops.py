@@ -129,6 +129,104 @@ def _clean_list(values: list[str] | tuple[str, ...] | None) -> list[str]:
     return [value.strip() for value in values if value and value.strip()]
 
 
+def _graphql(query: str, *, env: dict | None = None, dry_run: bool = False) -> dict:
+    resolved_env = _normalized_env(env)
+    command = ["gh", "api", "graphql", "-f", f"query={query}"]
+    if dry_run:
+        return {"status": "dry_run", "command": command}
+    completed = subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        env=resolved_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip() or "gh graphql failed"
+        raise RuntimeError(detail)
+    body = completed.stdout.strip()
+    return json.loads(body) if body else {}
+
+
+def _graphql_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _suggested_actor_ids(repository: str, logins: list[str], env: dict | None = None) -> dict[str, str]:
+    if not logins:
+        return {}
+    owner, repo_name = repository.split("/", 1)
+    login_names = ",".join(sorted(set(logins)))
+    query = (
+        "query { repository(owner:%s, name:%s) { suggestedActors(capabilities:[CAN_BE_ASSIGNED], loginNames:%s, first: 20) "
+        "{ nodes { __typename ... on User { id login } ... on Bot { id login } } } } }"
+        % (_graphql_string(owner), _graphql_string(repo_name), _graphql_string(login_names))
+    )
+    data = _graphql(query, env=env).get("data", {})
+    nodes = (((data.get("repository") or {}).get("suggestedActors") or {}).get("nodes") or [])
+    return {node["login"].lower(): node["id"] for node in nodes if node.get("login") and node.get("id")}
+
+
+def _issue_node_id(repository: str, issue_number: int, env: dict | None = None) -> str:
+    owner, repo_name = repository.split("/", 1)
+    query = (
+        "query { repository(owner:%s, name:%s) { issue(number:%d) { id } } }"
+        % (_graphql_string(owner), _graphql_string(repo_name), issue_number)
+    )
+    data = _graphql(query, env=env).get("data", {})
+    issue = ((data.get("repository") or {}).get("issue") or {})
+    node_id = issue.get("id", "")
+    if not node_id:
+        raise RuntimeError(f"issue node id could not be resolved: {issue_number}")
+    return node_id
+
+
+def assign_issue(
+    *,
+    issue_number: int,
+    assignees: list[str],
+    repo: str | None = None,
+    env: dict | None = None,
+    dry_run: bool = False,
+) -> dict:
+    repository = _require_repository(repo, env)
+    cleaned = _clean_list(assignees)
+    if not cleaned:
+        return {"status": "skipped", "reason": "no_assignees"}
+    if dry_run:
+        return {
+            "status": "dry_run",
+            "repo": repository,
+            "issue_number": issue_number,
+            "assignees": cleaned,
+        }
+
+    actor_ids = _suggested_actor_ids(repository, cleaned, env=env)
+    missing = [login for login in cleaned if login.lower() not in actor_ids]
+    if missing:
+        raise RuntimeError(f"assignable actors could not be resolved: {', '.join(missing)}")
+
+    issue_id = _issue_node_id(repository, issue_number, env=env)
+    quoted_ids = ", ".join(_graphql_string(actor_ids[login.lower()]) for login in cleaned)
+    mutation = (
+        "mutation { addAssigneesToAssignable(input:{assignableId:%s, assigneeIds:[%s]}) "
+        "{ assignable { ... on Issue { number assignees(first:20){ nodes { login } } } } } }"
+        % (_graphql_string(issue_id), quoted_ids)
+    )
+    data = _graphql(mutation, env=env).get("data", {})
+    assignees_result = (
+        (((data.get("addAssigneesToAssignable") or {}).get("assignable") or {}).get("assignees") or {}).get("nodes")
+        or []
+    )
+    return {
+        "status": "assigned",
+        "repo": repository,
+        "issue_number": issue_number,
+        "assignees": [node.get("login", "") for node in assignees_result],
+    }
+
+
 def create_issue(
     *,
     title: str,
@@ -149,8 +247,6 @@ def create_issue(
     if cleaned_labels:
         payload["labels"] = cleaned_labels
     cleaned_assignees = _clean_list(assignees)
-    if cleaned_assignees:
-        payload["assignees"] = cleaned_assignees
     if milestone is not None:
         payload["milestone"] = milestone
 
@@ -168,13 +264,22 @@ def create_issue(
             "title": title,
             "payload": payload,
         }
-    return {
+    result = {
         "status": "created",
         "repo": repository,
         "issue_number": response.get("number"),
         "url": response.get("html_url", ""),
         "title": response.get("title", title),
     }
+    if cleaned_assignees:
+        result["assignment"] = assign_issue(
+            issue_number=result["issue_number"],
+            assignees=cleaned_assignees,
+            repo=repository,
+            env=env,
+            dry_run=dry_run,
+        )
+    return result
 
 
 def update_issue(

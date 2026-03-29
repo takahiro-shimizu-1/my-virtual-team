@@ -93,6 +93,33 @@ class GitHubIntegrationTests(unittest.TestCase):
         add_comment.assert_called_once()
         close_issue.assert_called_once_with(issue_number=42, repo="example-org/example-repo")
 
+    def test_create_issue_assigns_copilot_after_creation(self) -> None:
+        with patch.object(
+            github_ops,
+            "_run_gh_api",
+            return_value={"number": 77, "html_url": "https://example.com/issues/77", "title": "task"},
+        ) as run_api, patch.object(
+            github_ops,
+            "assign_issue",
+            return_value={"status": "assigned", "assignees": ["Copilot"]},
+        ) as assign_issue:
+            result = github_ops.create_issue(
+                title="task",
+                body="body",
+                assignees=["copilot-swe-agent"],
+                repo="example-org/example-repo",
+            )
+        self.assertEqual(result["status"], "created")
+        self.assertEqual(result["assignment"]["status"], "assigned")
+        run_api.assert_called_once()
+        assign_issue.assert_called_once_with(
+            issue_number=77,
+            assignees=["copilot-swe-agent"],
+            repo="example-org/example-repo",
+            env=None,
+            dry_run=False,
+        )
+
     def test_bridge_routes_issue_comment_in_dry_run(self) -> None:
         bridge = load_bridge_module()
         event = {

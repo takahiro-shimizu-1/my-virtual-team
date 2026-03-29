@@ -13,7 +13,7 @@ if str(INTEGRATIONS_ROOT) not in sys.path:
     sys.path.insert(0, str(INTEGRATIONS_ROOT))
 
 from activity_log import append_activity_entry, build_manual_entry
-from github_ops import add_comment, close_issue, create_issue, update_issue
+from github_ops import add_comment, assign_issue, close_issue, create_issue, update_issue
 from notion import sync_activity_log
 from slack import send_manual_message
 
@@ -65,6 +65,12 @@ def build_parser() -> argparse.ArgumentParser:
     github_issue_close.add_argument("--state-reason", choices=["completed", "not_planned"], default="completed")
     github_issue_close.add_argument("--repo", default="")
     github_issue_close.add_argument("--dry-run", action="store_true")
+
+    github_issue_assign = subparsers.add_parser("github-issue-assign")
+    github_issue_assign.add_argument("--issue-number", required=True, type=int)
+    github_issue_assign.add_argument("--assignee", action="append", required=True)
+    github_issue_assign.add_argument("--repo", default="")
+    github_issue_assign.add_argument("--dry-run", action="store_true")
 
     github_comment = subparsers.add_parser("github-comment")
     github_comment.add_argument("--body", required=True)
@@ -127,6 +133,13 @@ def main() -> int:
             repo=args.repo or None,
             comment=args.comment,
             state_reason=args.state_reason,
+            dry_run=args.dry_run,
+        )
+    elif args.command == "github-issue-assign":
+        result = assign_issue(
+            issue_number=args.issue_number,
+            assignees=args.assignee,
+            repo=args.repo or None,
             dry_run=args.dry_run,
         )
     elif args.command == "github-comment":

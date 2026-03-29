@@ -41,6 +41,16 @@ PR comment:
 
 `--dry-run` を付けると `gh api` を実行せず、送信予定 payload だけ確認できる。
 
+Copilot へ assign:
+
+```bash
+./scripts/github-issue.sh github-issue-assign \
+  --issue-number 5 \
+  --assignee copilot-swe-agent
+```
+
+`github-issue-create --assignee copilot-swe-agent` も内部で GraphQL assign にフォールバックする。
+
 ## 自動 workflow
 
 `.github/workflows/github-ops.yml` は以下で動く。
@@ -91,3 +101,14 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 
 - local: `gh auth login` 済み、または `GH_TOKEN` / `GITHUB_TOKEN`
 - GitHub Actions: `secrets.GITHUB_TOKEN`
+
+## Copilot coding agent
+
+この repo では `copilot-swe-agent` が assign 候補として見えるため、Issue を assign すると Copilot coding agent が作業を開始できる。
+
+実測では以下が確認できた。
+
+- issue #5 を Copilot に assign
+- Copilot が PR #6 を作成
+- `docs/copilot-smoke.md` を追加
+- PR #6 を merge

@@ -98,6 +98,7 @@ npm run validate:v4
 ./scripts/github-issue.sh github-issue-create --title "調査依頼" --body "API設計レビューをしたい"
 ./scripts/github-issue.sh github-issue-update --issue-number 12 --label development --body "追加要件あり"
 ./scripts/github-issue.sh github-issue-close --issue-number 12 --comment "完了"
+./scripts/github-issue.sh github-issue-assign --issue-number 12 --assignee copilot-swe-agent
 ./scripts/github-pr-comment.sh --pr-number 3 --body "route summary を更新しました"
 ```
 
