@@ -19,6 +19,7 @@ on:
 permissions:
   contents: read
   checks: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -26,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      VIRTUAL_TEAM_PR_AGENT_MENTION: ${{ vars.VIRTUAL_TEAM_PR_AGENT_MENTION }}
     steps:
       - name: Resolve PR and head SHA
         id: pr
@@ -100,6 +102,83 @@ jobs:
         id: verify
         continue-on-error: true
         run: npm run ci:verify
+
+      - name: Build native review prompt
+        if: steps.pr.outputs.number != '' && steps.verify.outcome == 'success'
+        id: review
+        run: |
+          AGENT_MENTION="${VIRTUAL_TEAM_PR_AGENT_MENTION:-@copilot}"
+          BODY="$AGENT_MENTION Please inspect this pull request for correctness, regression risks, and missing tests. If you find issues, push follow-up fixes and summarize them on the PR."
+          {
+            echo "body<<EOF"
+            echo "$BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Collect changed files
+        if: steps.pr.outputs.number != '' && steps.verify.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr view "${{ steps.pr.outputs.number }}" \
+            --repo "${{ github.repository }}" \
+            --json files \
+            --jq '.files[].path' > /tmp/changed-files.txt
+
+      - name: Build impact report
+        if: steps.pr.outputs.number != '' && steps.verify.outcome == 'success'
+        id: impact
+        run: |
+          python3 runtime/src/gitnexus/impact_report.py --repo . --db .gitnexus/agent-graph.db --stdin --markdown < /tmp/changed-files.txt > /tmp/impact.md
+          {
+            echo "body<<EOF"
+            cat /tmp/impact.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post impact report
+        if: steps.pr.outputs.number != '' && steps.verify.outcome == 'success'
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          IMPACT_BODY: ${{ steps.impact.outputs.body }}
+        with:
+          script: |
+            const body = process.env.IMPACT_BODY;
+            const marker = '## GitNexus Impact Report';
+            const issue_number = Number(process.env.PR_NUMBER);
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number,
+            });
+            const existing = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Comment native review handoff
+        if: steps.pr.outputs.number != '' && steps.verify.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ steps.pr.outputs.number }}" \
+            --repo ${{ github.repository }} \
+            --body "${{ steps.review.outputs.body }}"
 
       - name: Finalize check run
         if: steps.pr.outputs.number != ''

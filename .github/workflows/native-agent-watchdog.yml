@@ -67,6 +67,16 @@ jobs:
             while read -r pr_number head_branch head_sha; do
               [ -n "${pr_number:-}" ] || continue
 
+              latest_commit_age=$(gh pr view "$pr_number" \
+                --repo "${{ github.repository }}" \
+                --json commits \
+                --jq '.commits[-1].committedDate' | \
+                python3 -c "from datetime import datetime, timezone; import sys; raw=sys.stdin.read().strip(); committed=datetime.fromisoformat(raw.replace('Z', '+00:00')); now=datetime.now(timezone.utc); print(int((now-committed).total_seconds()))")
+
+              if [ "${latest_commit_age}" -lt 120 ]; then
+                continue
+              fi
+
               existing=$(gh api \
                 -H "Accept: application/vnd.github+json" \
                 repos/${{ github.repository }}/commits/${head_sha}/check-runs \
