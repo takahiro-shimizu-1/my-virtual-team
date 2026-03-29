@@ -134,3 +134,21 @@ Phase 2 以降で以下を durable state に持つ。
 - `notifications`
 
 JSONL は export に限定し、入力面の正本にはしない。
+
+## Phase 2 Runtime Tables
+
+`runtime/migrations/001_initial.sql` で以下を初期化する。
+
+- `tasks`
+- `task_dependencies`
+- `task_locks`
+- `task_attempts`
+- `task_events`
+- `task_outputs`
+- `task_approvals`
+- `skill_runs`
+- `skill_health_snapshots`
+- `knowledge_diffs`
+- `notifications`
+
+Durable state の正本は `.runtime/state.db`、JSONL mirror は `.runtime/exports/skill-bus/`。

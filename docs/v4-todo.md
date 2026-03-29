@@ -36,9 +36,15 @@
 
 ## Phase 2
 
-- [ ] durable store の schema を作成
-- [ ] task lifecycle CLI を実装
-- [ ] JSONL export を追加
+- [x] durable store の schema を作成
+- [x] task lifecycle CLI を実装
+- [x] JSONL export を追加
+
+## Phase 2 Notes
+
+- `.runtime/state.db` を SSOT とし、`task-events-YYYY-MM-DD.jsonl` を mirror 出力
+- `create`, `dispatch`, `claim`, `heartbeat`, `complete`, `fail`, `show` を CLI で操作可能
+- lock contention と retryable fail を代表ケースで確認済み
 
 ## Phase 3
 

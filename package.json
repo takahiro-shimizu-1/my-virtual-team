@@ -9,6 +9,8 @@
   "scripts": {
     "registry:build": "node scripts/build-registry.js",
     "graph:build": "bash scripts/rebuild-agent-graph.sh",
-    "graph:context": "bash scripts/resolve-agent-context.sh"
+    "graph:context": "bash scripts/resolve-agent-context.sh",
+    "runtime:migrate": "python3 runtime/src/cli/migrate.py",
+    "runtime:task": "bash scripts/runtime-task.sh"
   }
 }
