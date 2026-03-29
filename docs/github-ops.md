@@ -114,6 +114,7 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 - local: `gh auth login` 済み、または `GH_TOKEN` / `GITHUB_TOKEN`
 - GitHub Actions: `secrets.GITHUB_TOKEN`
 - autonomous native kickoff: `secrets.VIRTUAL_TEAM_GH_USER_TOKEN`
+  GitHub Actions runner 上で `gh auth login --with-token` に使う
 - 実装担当は repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` で差し替え可能
 - PR mention は repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION` で差し替え可能
 

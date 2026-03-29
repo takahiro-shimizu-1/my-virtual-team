@@ -24,18 +24,22 @@ jobs:
         id: launch
         run: |
           if [ -n "${PREFERRED_GH_TOKEN}" ]; then
-            export GH_TOKEN="${PREFERRED_GH_TOKEN}"
-            TOKEN_SOURCE="repo-secret"
+            printf '%s\n' "${PREFERRED_GH_TOKEN}" | gh auth login --hostname github.com --with-token
+            TOKEN_SOURCE="repo-secret-oauth"
           else
-            export GH_TOKEN="${FALLBACK_GH_TOKEN}"
             TOKEN_SOURCE="github-token"
           fi
 
           set +e
-          OUTPUT=$(python3 scripts/github-agent-task.py issue \
-            --issue-number ${{ github.event.issue.number }} \
-            --repo ${{ github.repository }} 2>&1)
-          STATUS=$?
+          if [ -n "${PREFERRED_GH_TOKEN}" ]; then
+            OUTPUT=$(python3 scripts/github-agent-task.py issue \
+              --issue-number ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} 2>&1)
+            STATUS=$?
+          else
+            OUTPUT="VIRTUAL_TEAM_GH_USER_TOKEN is not configured. gh agent-task requires OAuth login and cannot run with github.token only."
+            STATUS=1
+          fi
           set -e
 
           {

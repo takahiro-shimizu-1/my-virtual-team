@@ -38,7 +38,7 @@
 
 `@claude` や `@codex` など GitHub 側で有効化された third-party agent に切り替えたい場合は repo variable だけ差し替えればよい。
 
-GitHub-hosted kickoff は `VIRTUAL_TEAM_GH_USER_TOKEN` を優先し、未設定時だけ `github.token` にフォールバックする。現在の repo では前者を既定にしている。
+GitHub-hosted kickoff は `VIRTUAL_TEAM_GH_USER_TOKEN` を優先し、runner 上で `gh auth login --with-token` してから native task を起動する。現在の repo ではこれを既定にしている。
 
 ## 任意の API fallback
 
