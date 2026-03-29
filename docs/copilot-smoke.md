@@ -1,4 +1,4 @@
-# Copilot Smoke Tests
+# AI Smoke Tests
 
 ## 概要
 
@@ -30,7 +30,7 @@ Smoke tests は以下を確認する。
 
 ### `agent-pr-verify` (`.github/workflows/agent-pr-verify.yml`)
 
-- **トリガー**: `Copilot coding agent` の `workflow_run.completed`
+- **トリガー**: GitHub native coding agent run の `workflow_run.completed`
 - **役割**: AI agent が作った PR head を default-branch 文脈で checkout し、`npm run ci:verify` を実行する
 - **期待結果**: `action_required` になりやすい bot branch push の代わりに、deterministic な PR verification が走る
 

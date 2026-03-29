@@ -1,4 +1,4 @@
-name: claude-review
+name: native-agent-review
 
 on:
   workflow_run:

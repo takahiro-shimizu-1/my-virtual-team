@@ -59,6 +59,12 @@ npm run github:agent-task -- issue --issue-number 7 --follow
 
 これは `gh agent-task create` を使う。現在の repo では GitHub Actions も同じ native route を `VIRTUAL_TEAM_GH_USER_TOKEN` 経由で既定利用するので、通常は人手で打つ必要はない。上のコマンドは smoke / diagnosis 用。
 
+必要なら custom agent を明示できる。
+
+```bash
+npm run github:agent-task -- prompt --text "README.md を整備して" --custom-agent vt-implementation-claude --dry-run
+```
+
 ## 自動 workflow
 
 `.github/workflows/github-ops.yml` は以下で動く。
@@ -118,13 +124,20 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 
 ## Native coding agent
 
-この repo では既定で `copilot-swe-agent` を implementation agent として扱う。  
-GitHub 側で Anthropic Claude や OpenAI Codex の third-party agent を有効化している場合は、repo variable を変えるだけで native route を切り替えられる。
+この repo の GitHub-native route は custom agent profile を使って provider を固定できる。
+
+- `vt-implementation-auto`: repo default / auto model selection
+- `vt-implementation-claude`: Claude Sonnet 4.5
+- `vt-implementation-codex`: GPT-5.2-Codex
+
+issue に `claude` または `codex` label が付いた場合、workflow は対応する custom agent を `gh agent-task create --custom-agent ...` で起動する。`auto` / `copilot` は `vt-implementation-auto` を使う。
+
+`Gemini` はこの repo では local runner を正規 route とする。GitHub native coding agent 側には載せていない。
 
 実運用上の正規 path は 1 つである。
 
 - GitHub-hosted default:
-  issue label -> workflow -> `gh auth login --with-token` -> `gh agent-task create`
+  issue label -> workflow -> `gh auth login --with-token` -> `gh agent-task create --custom-agent vt-implementation-*`
 
 この経路は GitHub subscription に紐づくユーザー文脈で起動するため、vendor API key なしで native agent を動かせる。現在の repo では maintainer の `gh auth` を repo secret 化してあり、利用者が別途手動起動する前提はない。
 

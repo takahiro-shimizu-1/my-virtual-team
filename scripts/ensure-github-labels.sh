@@ -22,7 +22,8 @@ ensure_label() {
 }
 
 ensure_label "auto" "0E8A16" "Virtual Team native-first automation"
-ensure_label "copilot" "1F6FEB" "Route this issue to the default subscription coding agent"
-ensure_label "claude" "5319E7" "Run native decomposition flow for this issue"
-ensure_label "codex" "FBCA04" "Use native Codex agent route when configured"
+ensure_label "copilot" "1F6FEB" "Route this issue to the repository default GitHub coding agent"
+ensure_label "claude" "5319E7" "Pin GitHub native execution to the Claude custom agent profile"
+ensure_label "codex" "FBCA04" "Pin GitHub native execution to the Codex custom agent profile"
+ensure_label "gemini" "0F9D58" "Prefer the local Gemini runner rather than GitHub native execution"
 ensure_label "needs-human" "B60205" "Human review or intervention is required"

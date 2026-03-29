@@ -1,4 +1,4 @@
-name: copilot-assign
+name: native-agent-kickoff
 
 on:
   issues:
@@ -9,13 +9,12 @@ permissions:
   issues: write
 
 jobs:
-  assign-copilot:
+  kickoff:
     runs-on: ubuntu-latest
-    if: github.event.label.name == 'copilot' || github.event.label.name == 'auto'
+    if: contains(fromJson('["auto","copilot","claude","codex"]'), github.event.label.name)
     env:
       VIRTUAL_TEAM_IMPLEMENTATION_AGENT: ${{ vars.VIRTUAL_TEAM_IMPLEMENTATION_AGENT }}
       PREFERRED_GH_TOKEN: ${{ secrets.VIRTUAL_TEAM_GH_USER_TOKEN }}
-      FALLBACK_GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -39,6 +38,7 @@ jobs:
           {
             echo "token_source=$TOKEN_SOURCE"
             echo "status=$STATUS"
+            echo "label=${{ github.event.label.name }}"
             echo "result<<EOF"
             echo "$OUTPUT"
             echo "EOF"
@@ -49,7 +49,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          BODY="Subscription-native coding agent kickoff started automatically for this issue.\n\nToken source: \`${{ steps.launch.outputs.token_source }}\`."
+          BODY="Subscription-native coding agent kickoff started automatically for this issue.\n\nRequested route label: \`${{ steps.launch.outputs.label }}\`\nToken source: \`${{ steps.launch.outputs.token_source }}\`."
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
             --body "$BODY"

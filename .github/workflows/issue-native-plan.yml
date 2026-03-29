@@ -1,4 +1,4 @@
-name: claude-decompose
+name: issue-native-plan
 
 on:
   issues:
@@ -11,9 +11,7 @@ permissions:
 jobs:
   decompose:
     runs-on: ubuntu-latest
-    if: github.event.label.name == 'claude' || github.event.label.name == 'auto'
-    env:
-      VIRTUAL_TEAM_IMPLEMENTATION_AGENT: ${{ vars.VIRTUAL_TEAM_IMPLEMENTATION_AGENT }}
+    if: contains(fromJson('["auto","copilot","claude","codex"]'), github.event.label.name)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -82,13 +80,13 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: `Native decomposition: atomic (${analysis.reason}). Adding \`copilot\` label for subscription-based agent execution.`,
+                body: `Native decomposition: atomic (${analysis.reason}). Adding \`auto\` for subscription-native execution.`,
               });
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                labels: ['copilot'],
+                labels: ['auto'],
               }).catch(() => {});
               return;
             }
@@ -98,8 +96,8 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: subtask,
-                body: `Sub-issue decomposed from #${issue.number}: ${issue.title}\n\nNative workflow will route this to the default subscription-based coding agent.`,
-                labels: ['copilot', 'auto'],
+                body: `Sub-issue decomposed from #${issue.number}: ${issue.title}\n\nNative workflow will route this to the repository's subscription-native coding agent path.`,
+                labels: ['auto'],
               });
             }
 

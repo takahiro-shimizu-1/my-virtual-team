@@ -90,6 +90,49 @@ assert payload["execution"]["status"] == "dry_run", payload
 assert payload["execution"]["output_paths"] == ["README.md"], payload
 PY
 
+VIRTUAL_TEAM_SKIP_ENSURE=1 bash scripts/runtime-task.sh ai --provider claude --prompt "README.md を整備して quickstart をまとめて" --command admin --target-path README.md --dry-run > "$TMP_DIR/claude-dry-run.json"
+python3 - "$TMP_DIR/claude-dry-run.json" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["execution"]["status"] == "dry_run", payload
+assert payload["execution"]["provider"] == "claude", payload
+assert "provider_ready" in payload["execution"], payload
+assert payload["execution"]["output_paths"] == ["README.md"], payload
+PY
+
+VIRTUAL_TEAM_SKIP_ENSURE=1 bash scripts/runtime-task.sh ai --provider gemini --prompt "README.md を整備して quickstart をまとめて" --command admin --target-path README.md --dry-run > "$TMP_DIR/gemini-dry-run.json"
+python3 - "$TMP_DIR/gemini-dry-run.json" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["execution"]["status"] == "dry_run", payload
+assert payload["execution"]["provider"] == "gemini", payload
+assert "provider_ready" in payload["execution"], payload
+assert payload["execution"]["output_paths"] == ["README.md"], payload
+PY
+
+python3 scripts/github-agent-task.py prompt \
+  --text "README.md を整備して quickstart をまとめて" \
+  --custom-agent vt-implementation-claude \
+  --repo example-org/example-repo \
+  --dry-run > "$TMP_DIR/github-agent-task-claude.json"
+
+python3 - "$TMP_DIR/github-agent-task-claude.json" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["status"] == "dry_run", payload
+assert payload["selected_custom_agent"] == "vt-implementation-claude", payload
+assert "--custom-agent" in payload["result"]["command"], payload
+PY
+
 python3 runtime/src/cli/watch.py scan > "$TMP_DIR/watch.json"
 python3 runtime/src/cli/maintenance.py run --days 30 --dry-run > "$TMP_DIR/maintenance.json"
 python3 runtime/src/cli/events.py publish > "$TMP_DIR/events.json"

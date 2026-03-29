@@ -23,8 +23,8 @@
 | `gitnexus-stable-ops` | weekly full reindex | 吸収済み | `gitnexus-weekly.yml` を追加 |
 | `line-harness-oss` | event bus / health / runbook / watcher | 吸収済み | 維持 |
 | `line-harness-oss` | GitHub issue / PR bridge | 吸収済み | route / plan / close / issue assign / PR comment まで統合 |
-| `line-harness-oss` | Claude decompose pipeline | 吸収済み | native-first planner に置換し、subscription route を既定化 |
-| `line-harness-oss` | Claude AI review pipeline | 吸収済み | native agent mention route に置換し、subscription route を既定化 |
+| `line-harness-oss` | Claude decompose pipeline | 吸収済み | provider-neutral issue planner に置換し、subscription route を既定化 |
+| `line-harness-oss` | Claude AI review pipeline | 吸収済み | provider-neutral native review handoff に置換し、subscription route を既定化 |
 | `line-harness-oss` | auto-merge pipeline | 吸収済み | workflow 実装済み |
 | `line-harness-oss` | Copilot watchdog | 吸収済み | workflow 実装済み |
 | `line-harness-oss` | Cloudflare deploy / preview | 未吸収 | domain-specific のため対象外 |
@@ -41,12 +41,12 @@
 - [x] GitHub Actions の PR impact comment
 - [x] GitHub Actions の weekly full reindex
 
-### 2. Claude on GitHub
+### 2. Native AI on GitHub
 
-- [x] issue labeled で Claude が atomic / decomposition を判定
-- [x] managed AI PR verify 成功後に Claude review handoff
+- [x] issue labeled で native planner が atomic / decomposition を判定
+- [x] managed AI PR verify 成功後に native review handoff
 - [x] review / CI success 後の auto-merge
-- [x] Copilot `action_required` を再実行する watchdog
+- [x] native agent `action_required` を再実行する watchdog
 
 ### 3. Agent Skill Self-Improve
 

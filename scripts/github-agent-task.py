@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,16 @@ if str(SRC_ROOT / "integrations") not in sys.path:
 
 import github_ops
 
+LABEL_TO_CUSTOM_AGENT = {
+    "auto": "vt-implementation-auto",
+    "copilot": "vt-implementation-auto",
+    "claude": "vt-implementation-claude",
+    "codex": "vt-implementation-codex",
+}
+UNSUPPORTED_NATIVE_LABELS = {
+    "gemini": "GitHub native coding agent does not currently support a Gemini execution path in this repository. Use the local runner: `npm run runtime:task -- ai --provider gemini ...`.",
+}
+
 
 def _prompt_from_issue(repo: str, issue_number: int) -> tuple[str, dict]:
     completed = subprocess.run(
@@ -27,7 +38,7 @@ def _prompt_from_issue(repo: str, issue_number: int) -> tuple[str, dict]:
             "--repo",
             repo,
             "--json",
-            "title,body,url,number",
+            "title,body,url,number,labels",
         ],
         cwd=ROOT,
         capture_output=True,
@@ -41,12 +52,50 @@ def _prompt_from_issue(repo: str, issue_number: int) -> tuple[str, dict]:
     return prompt, payload
 
 
-def _run_agent_task(prompt: str, *, repo: str, follow: bool, dry_run: bool) -> dict:
+def _resolve_issue_custom_agent(issue_payload: dict, explicit_custom_agent: str | None = None) -> tuple[str, str]:
+    if explicit_custom_agent:
+        return explicit_custom_agent, "cli"
+
+    env_override = os.environ.get("VIRTUAL_TEAM_IMPLEMENTATION_AGENT", "").strip()
+    if env_override:
+        return env_override, "env"
+
+    labels = {
+        (item.get("name") or "").strip().lower()
+        for item in issue_payload.get("labels", []) or []
+        if isinstance(item, dict)
+    }
+    specific = [name for name in ("claude", "codex", "gemini") if name in labels]
+    if len(specific) > 1:
+        raise RuntimeError(f"conflicting provider labels: {', '.join(specific)}")
+    if "gemini" in labels:
+        raise RuntimeError(UNSUPPORTED_NATIVE_LABELS["gemini"])
+    if "claude" in labels:
+        return LABEL_TO_CUSTOM_AGENT["claude"], "issue-label"
+    if "codex" in labels:
+        return LABEL_TO_CUSTOM_AGENT["codex"], "issue-label"
+    if "copilot" in labels:
+        return LABEL_TO_CUSTOM_AGENT["copilot"], "issue-label"
+    if "auto" in labels:
+        return LABEL_TO_CUSTOM_AGENT["auto"], "issue-label"
+    return LABEL_TO_CUSTOM_AGENT["auto"], "default"
+
+
+def _run_agent_task(
+    prompt: str,
+    *,
+    repo: str,
+    follow: bool,
+    dry_run: bool,
+    custom_agent: str | None = None,
+) -> dict:
     command = ["gh", "agent-task", "create", prompt, "--repo", repo]
+    if custom_agent:
+        command.extend(["--custom-agent", custom_agent])
     if follow:
-      command.append("--follow")
+        command.append("--follow")
     if dry_run:
-        return {"status": "dry_run", "command": command, "prompt": prompt}
+        return {"status": "dry_run", "command": command, "prompt": prompt, "custom_agent": custom_agent}
     completed = subprocess.run(
         command,
         cwd=ROOT,
@@ -72,12 +121,14 @@ def build_parser() -> argparse.ArgumentParser:
     issue = sub.add_parser("issue")
     issue.add_argument("--repo")
     issue.add_argument("--issue-number", type=int, required=True)
+    issue.add_argument("--custom-agent", default="")
     issue.add_argument("--follow", action="store_true")
     issue.add_argument("--dry-run", action="store_true")
 
     prompt = sub.add_parser("prompt")
     prompt.add_argument("--repo")
     prompt.add_argument("--text", required=True)
+    prompt.add_argument("--custom-agent", default="")
     prompt.add_argument("--follow", action="store_true")
     prompt.add_argument("--dry-run", action="store_true")
 
@@ -92,21 +143,39 @@ def main() -> int:
 
     if args.command == "issue":
         prompt, issue_payload = _prompt_from_issue(repo, args.issue_number)
-        result = _run_agent_task(prompt, repo=repo, follow=args.follow, dry_run=args.dry_run)
+        custom_agent, source = _resolve_issue_custom_agent(issue_payload, args.custom_agent or None)
+        result = _run_agent_task(
+            prompt,
+            repo=repo,
+            follow=args.follow,
+            dry_run=args.dry_run,
+            custom_agent=custom_agent,
+        )
         payload = {
             "status": result["status"],
             "mode": "issue",
             "repo": repo,
             "issue": issue_payload,
+            "selected_custom_agent": custom_agent,
+            "custom_agent_source": source,
             "result": result,
         }
     else:
-        result = _run_agent_task(args.text, repo=repo, follow=args.follow, dry_run=args.dry_run)
+        custom_agent = args.custom_agent.strip() or os.environ.get("VIRTUAL_TEAM_IMPLEMENTATION_AGENT", "").strip() or None
+        result = _run_agent_task(
+            args.text,
+            repo=repo,
+            follow=args.follow,
+            dry_run=args.dry_run,
+            custom_agent=custom_agent,
+        )
         payload = {
             "status": result["status"],
             "mode": "prompt",
             "repo": repo,
             "prompt": args.text,
+            "selected_custom_agent": custom_agent,
+            "custom_agent_source": "cli" if args.custom_agent.strip() else ("env" if custom_agent else "default"),
             "result": result,
         }
 

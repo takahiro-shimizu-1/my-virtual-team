@@ -12,6 +12,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from control.runner_bridge import plan_request
+from control.ai_runner import ProviderSpec, preview_ai_task, run_ai_task
 from control.codex_runner import run_codex_task
 from control.maintenance import run_maintenance
 from control.router import route_request
@@ -162,6 +163,58 @@ class RuntimeFlowTests(unittest.TestCase):
         ), patch("control.codex_runner._run_codex_exec", return_value={"status": "ok", "last_message": "README.md を追加しました"}):
             result = run_codex_task(self.conn, task_id=task["task_id"], runner_id="codex")
         self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["changed_paths"], ["README.md"])
+        self.assertEqual(result["task"]["outputs"][0]["path"], "README.md")
+
+    def test_ai_preview_supports_claude_and_gemini_contracts(self) -> None:
+        task = {
+            "task_id": "dry-run",
+            "title": "README を整備する",
+            "agent_id": "komiya-sakura",
+            "payload": {
+                "request": "README.md を整備して quickstart をまとめる",
+                "target_paths": ["README.md"],
+            },
+        }
+        with patch(
+            "control.ai_runner.resolve_local_provider",
+            return_value=ProviderSpec("gemini", "Gemini CLI", ["gemini"], False, False, "command not found"),
+        ), patch(
+            "control.ai_runner.available_local_providers",
+            return_value=[
+                {"provider": "gemini", "available": False, "ready": False, "readiness_reason": "command not found", "command": ["gemini"]}
+            ],
+        ):
+            preview = preview_ai_task(task, runner_id="local-ai", provider="gemini")
+        self.assertEqual(preview["provider"], "gemini")
+        self.assertFalse(preview["provider_available"])
+        self.assertFalse(preview["provider_ready"])
+        self.assertEqual(preview["output_paths"], ["README.md"])
+
+    def test_ai_runner_completes_task_with_claude_provider(self) -> None:
+        task = create_task(
+            self.conn,
+            title="README を整備する",
+            agent_id="komiya-sakura",
+            payload={
+                "request": "README.md を追加して quickstart をまとめる",
+                "target_paths": ["README.md"],
+            },
+        )
+        dispatch_ready_tasks(self.conn)
+        with patch(
+            "control.ai_runner.resolve_local_provider",
+            return_value=ProviderSpec("claude", "Claude Code", ["claude"], True, True, ""),
+        ), patch("control.ai_runner._git_changed_paths", side_effect=[[], ["README.md"]]), patch(
+            "control.ai_runner._repo_path_exists",
+            return_value=True,
+        ), patch(
+            "control.ai_runner._run_provider_exec",
+            return_value={"provider": "claude", "summary": "README.md を更新しました"},
+        ):
+            result = run_ai_task(self.conn, task_id=task["task_id"], runner_id="local-ai", provider="claude")
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["provider"]["name"], "claude")
         self.assertEqual(result["changed_paths"], ["README.md"])
         self.assertEqual(result["task"]["outputs"][0]["path"], "README.md")
 
