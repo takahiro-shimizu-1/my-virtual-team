@@ -101,6 +101,21 @@ GitHub-native 側は custom agent profile 経由で `Copilot default / Claude / 
 gh workflow run github-ops.yml --ref <branch> -f scenario=issues -f prompt='API設計レビューをお願いします'
 ```
 
+### Native Agent Smoke Testing
+
+GitHub Copilot coding agent（native agent）のエンドツーエンド動作を確認したい場合は、Issue を作成するだけでパイプラインが起動します。
+
+1. **Issue を作成** — タイトルに `[smoke]` または `[auto]` を含めると `github-ops` workflow がイベントを受信し、routing → task 登録 → native agent kickoff を自動で行います。
+2. **dry-run で確認** — ローカルで同等の確認をしたい場合:
+
+   ```bash
+   gh workflow run github-ops.yml --ref <branch> -f scenario=issues -f prompt='smoke test'
+   ```
+
+3. **結果確認** — `agent-pr-verify` workflow が native agent の作成した PR に対して `npm run ci:verify` を実行し、合否を判定します。
+
+詳細は [AI Smoke Tests](docs/copilot-smoke.md) と [GitHub Operations](docs/github-ops.md) を参照してください。
+
 ## 関連ドキュメント
 
 - [Runbook](docs/runbook.md): bootstrap、task 実行、health、watch、障害時チェック
