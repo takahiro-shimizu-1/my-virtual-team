@@ -7,6 +7,7 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$ROOT"
 BASELINE_STATUS="$(git status --porcelain)"
+export VIRTUAL_TEAM_STATE_DB="$TMP_DIR/state.db"
 
 npm run bootstrap
 npm run runtime:test

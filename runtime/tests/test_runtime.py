@@ -11,13 +11,13 @@ SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from control.runner_bridge import plan_request
+from control.runner_bridge import plan_request, start_fast_path
 from control.ai_runner import ProviderSpec, preview_ai_task, run_ai_task
 from control.codex_runner import run_codex_task
 from control.maintenance import run_maintenance
 from control.router import route_request
 from control.skill_monitor import analyze_skill_health, enqueue_improvement_tasks, enqueue_knowledge_review_tasks
-from control.task_store import complete_task, create_task, dispatch_ready_tasks, resolve_task_approval
+from control.task_store import cancel_task, complete_task, create_task, dispatch_ready_tasks, resolve_task_approval
 from db.connection import connect_db
 from db.migrate import apply_migrations
 from events.bus import publish_pending_events
@@ -65,6 +65,20 @@ class RuntimeFlowTests(unittest.TestCase):
         second_task = planned["created_tasks"][1]
         self.assertEqual(second_task["dependencies"], [first_task["task_id"]])
 
+    def test_start_fast_path_can_defer_claim_for_ai_execution(self) -> None:
+        started = start_fast_path(
+            self.conn,
+            prompt="README.md に quickstart を追加して",
+            command="admin",
+            runner_id="local-ai",
+            claim_immediately=False,
+        )
+        self.assertEqual(started["status"], "dispatched")
+        self.assertIsNone(started["claimed_task"])
+        task_id = started["created_tasks"][0]["task_id"]
+        self.assertEqual(started["created_tasks"][0]["status"], "created")
+        self.assertEqual(self.conn.execute("SELECT status FROM tasks WHERE task_id = ?", (task_id,)).fetchone()["status"], "dispatched")
+
     def test_approval_blocks_dispatch_until_resolved(self) -> None:
         task = create_task(
             self.conn,
@@ -78,6 +92,21 @@ class RuntimeFlowTests(unittest.TestCase):
         self.assertEqual(resolved["approvals"][-1]["decision"], "approved")
         dispatched = dispatch_ready_tasks(self.conn)
         self.assertEqual(dispatched[0]["task_id"], task["task_id"])
+
+    def test_cancel_task_releases_claimed_work(self) -> None:
+        task = create_task(
+            self.conn,
+            title="途中で止めるタスク",
+            agent_id="kirishima-ren",
+        )
+        dispatch_ready_tasks(self.conn)
+        claimed = self.conn.execute("SELECT task_id FROM tasks WHERE task_id = ?", (task["task_id"],)).fetchone()
+        self.assertIsNotNone(claimed)
+        from control.task_store import claim_task
+        claim_task(self.conn, task["task_id"], "tester", 300)
+        cancelled = cancel_task(self.conn, task["task_id"], "smoke cleanup", "tester")
+        self.assertEqual(cancelled["status"], "cancelled")
+        self.assertEqual(cancelled["error_message"], "smoke cleanup")
 
     def test_event_bus_creates_notifications_and_activity_log(self) -> None:
         task = create_task(

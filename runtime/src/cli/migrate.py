@@ -8,15 +8,16 @@ SRC_ROOT = Path(__file__).resolve().parents[1]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from db.connection import STATE_DB_PATH, connect_db
+from db.connection import connect_db, resolve_db_path
 from db.migrate import apply_migrations
 
 
 def main() -> int:
-    conn = connect_db()
+    db_path = resolve_db_path()
+    conn = connect_db(db_path)
     applied = apply_migrations(conn)
     payload = {
-        "db_path": str(STATE_DB_PATH),
+        "db_path": str(db_path),
         "applied": applied,
         "status": "ok",
     }

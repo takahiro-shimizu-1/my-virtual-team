@@ -493,6 +493,51 @@ def complete_task(conn, task_id: str, outputs: list[str] | None = None) -> dict:
     return get_task(conn, task_id)
 
 
+def cancel_task(conn, task_id: str, reason: str = "", cancelled_by: str = "system") -> dict:
+    row = conn.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,)).fetchone()
+    if not row:
+        raise RuntimeError(f"task not found: {task_id}")
+    task = row_to_task(row)
+    if task["status"] in {"completed", "failed", "cancelled"}:
+        raise RuntimeError(f"task is not cancellable: {task['status']}")
+
+    timestamp = now_iso()
+    note = reason or f"cancelled by {cancelled_by}"
+    released = release_locks(conn, task_id)
+
+    if task["status"] == "claimed" and task["current_attempt"] > 0:
+        conn.execute(
+            """
+            UPDATE task_attempts
+            SET status = 'cancelled', error_message = ?, finished_at = ?
+            WHERE task_id = ? AND attempt_no = ?
+            """,
+            (note, timestamp, task_id, task["current_attempt"]),
+        )
+
+    conn.execute(
+        """
+        UPDATE tasks
+        SET status = 'cancelled',
+            updated_at = ?,
+            lease_expires_at = '',
+            last_heartbeat_at = '',
+            claimed_by = CASE WHEN status = 'claimed' THEN claimed_by ELSE '' END,
+            error_message = ?
+        WHERE task_id = ?
+        """,
+        (timestamp, note, task_id),
+    )
+    record_event(
+        conn,
+        task_id,
+        "task.cancelled",
+        {"cancelled_by": cancelled_by, "reason": note, "released_locks": released},
+    )
+    conn.commit()
+    return get_task(conn, task_id)
+
+
 def fail_task(conn, task_id: str, error_message: str, retryable: bool = False) -> dict:
     row = conn.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,)).fetchone()
     if not row:

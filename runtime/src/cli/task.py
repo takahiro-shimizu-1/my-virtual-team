@@ -10,6 +10,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from control.task_store import (
+    cancel_task,
     claim_task,
     complete_task,
     create_task,
@@ -71,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
     complete = subparsers.add_parser("complete")
     complete.add_argument("--task-id", required=True)
     complete.add_argument("--output", action="append", default=[])
+
+    cancel = subparsers.add_parser("cancel")
+    cancel.add_argument("--task-id", required=True)
+    cancel.add_argument("--reason", default="")
+    cancel.add_argument("--cancelled-by", default="system")
 
     fail = subparsers.add_parser("fail")
     fail.add_argument("--task-id", required=True)
@@ -179,6 +185,8 @@ def main() -> int:
         result = heartbeat_task(conn, args.task_id, args.lease_seconds)
     elif args.command == "complete":
         result = complete_task(conn, args.task_id, args.output)
+    elif args.command == "cancel":
+        result = cancel_task(conn, args.task_id, args.reason, args.cancelled_by)
     elif args.command == "fail":
         result = fail_task(conn, args.task_id, args.error, args.retryable)
     elif args.command == "dispatch":
@@ -253,11 +261,17 @@ def main() -> int:
                     source=args.source,
                     runner_id=args.runner,
                     lease_seconds=args.lease_seconds,
+                    claim_immediately=False,
                 )
                 if started.get("status") == "approval_required":
                     result = started
                 else:
                     task_id = (started.get("claimed_task") or {}).get("task_id", "")
+                    if not task_id:
+                        created_tasks = started.get("created_tasks") or []
+                        if not created_tasks:
+                            raise RuntimeError("ai start did not create a runnable task")
+                        task_id = created_tasks[0].get("task_id", "")
                     result = {
                         "started": started,
                         "execution": run_ai_task(

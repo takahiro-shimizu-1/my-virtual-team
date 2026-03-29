@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -14,9 +15,18 @@ def ensure_runtime_dirs() -> None:
     EXPORT_ROOT.mkdir(parents=True, exist_ok=True)
 
 
+def resolve_db_path(db_path: str | Path | None = None) -> Path:
+    env_path = os.environ.get("VIRTUAL_TEAM_STATE_DB", "").strip()
+    if db_path:
+        return Path(db_path)
+    if env_path:
+        return Path(env_path)
+    return STATE_DB_PATH
+
+
 def connect_db(db_path: str | Path | None = None) -> sqlite3.Connection:
     ensure_runtime_dirs()
-    path = Path(db_path) if db_path else STATE_DB_PATH
+    path = resolve_db_path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row

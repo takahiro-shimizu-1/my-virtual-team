@@ -69,6 +69,7 @@ def start_fast_path(
     source: str = "chief",
     runner_id: str = "chief",
     lease_seconds: int = 300,
+    claim_immediately: bool = True,
 ) -> dict:
     planned = plan_request(
         conn,
@@ -90,10 +91,16 @@ def start_fast_path(
             "claimed_task": None,
         }
 
+    if not claim_immediately:
+        return {
+            **planned,
+            "status": "dispatched",
+            "claimed_task": None,
+        }
+
     claimed_task = claim_task(conn, task["task_id"], runner_id, lease_seconds)
     return {
         **planned,
         "status": "claimed",
         "claimed_task": claimed_task,
     }
-
