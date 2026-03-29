@@ -1,0 +1,14 @@
+{
+  "name": "my-virtual-team",
+  "private": true,
+  "version": "0.1.0",
+  "description": "shimizu virtual team runtime scaffold",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "registry:build": "node scripts/build-registry.js",
+    "graph:build": "bash scripts/rebuild-agent-graph.sh",
+    "graph:context": "bash scripts/resolve-agent-context.sh"
+  }
+}

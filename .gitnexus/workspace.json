@@ -1,0 +1,70 @@
+{
+  "version": "1.1",
+  "workspace_root": "my-virtual-team",
+  "description": "v4 migration workspace manifest for my-virtual-team",
+  "nodes": [
+    {
+      "id": "local",
+      "name": "Local Workspace",
+      "role": "primary",
+      "os": "linux",
+      "access": {
+        "type": "local"
+      },
+      "workspace_root": "/home/shimizu/study/AI/my-virtual-team-20260329t000730z-1-001/my-virtual-team",
+      "services": [
+        "chief",
+        "gitnexus",
+        "runtime"
+      ],
+      "labels": {
+        "environment": "dev"
+      }
+    }
+  ],
+  "services": [
+    {
+      "id": "chief",
+      "name": "Chief Orchestrator",
+      "type": "agent",
+      "node": "local",
+      "description": "Planning, routing, and synthesis entrypoint for my-virtual-team",
+      "labels": {
+        "mode": "planning-routing-synthesis"
+      }
+    },
+    {
+      "id": "gitnexus",
+      "name": "GitNexus Context Resolver",
+      "type": "server",
+      "node": "local",
+      "description": "Agent Context Graph builder and resolver",
+      "labels": {
+        "tool": "gni"
+      }
+    },
+    {
+      "id": "runtime",
+      "name": "Runtime Bridge",
+      "type": "worker",
+      "node": "local",
+      "description": "Phase 0-1 compatibility runner bridge",
+      "labels": {
+        "mode": "tracked_fast_path"
+      }
+    }
+  ],
+  "knowledge_refs": {
+    "skills_dir": ".claude/skills",
+    "knowledge_dir": ".gitnexus/knowledge",
+    "memory_dir": "outputs",
+    "guidelines_dir": "guidelines",
+    "docs_dir": "docs",
+    "templates_dir": "templates"
+  },
+  "index_policy": {
+    "follow_symlinks_in_manifest": false,
+    "skip_symlinks_not_in_manifest": true,
+    "cross_workspace_edges": false
+  }
+}

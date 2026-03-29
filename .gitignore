@@ -1,0 +1,6 @@
+node_modules/
+.runtime/
+.gitnexus/agent-graph.db
+.gitnexus/knowledge/
+outputs/tmp/
+dist/

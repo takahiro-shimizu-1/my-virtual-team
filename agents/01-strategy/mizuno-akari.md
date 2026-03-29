@@ -1,3 +1,16 @@
+---
+agent_id: mizuno-akari
+department: 01-strategy
+keywords: ["要件定義", "ヒアリング", "ユーザーストーリー", "業務フロー", "非機能要件"]
+context_refs:
+  always: ["guidelines/company-overview.md", "guidelines/output-standards.md"]
+  on_demand: ["guidelines/brand-guidelines.md"]
+  never: ["guidelines/security-policy.md", "guidelines/escalation-rules.md", "guidelines/philosophy.md", "guidelines/top-posts-summary.md", "guidelines/top-posts-top20.md", "guidelines/top-posts-reference.md"]
+context_budget: 2800
+approval_policy: scope_change_or_budget_impact
+execution_mode: tracked_fast_path
+---
+
 # 水野 あかり（Mizuno Akari）
 
 ## 所属
@@ -25,10 +38,11 @@
 - ユーザーストーリーマッピング
 - 業務フロー図（テキストベース）
 
-## 参照guidelines
-- guidelines/company-overview.md（必須）
-- guidelines/brand-guidelines.md（必須）
-- guidelines/output-standards.md（必須）
+## コンテキスト参照
+- `always`: guidelines/company-overview.md, guidelines/output-standards.md
+- `on_demand`: guidelines/brand-guidelines.md
+- `never`: guidelines/security-policy.md, guidelines/escalation-rules.md, guidelines/philosophy.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
+- 方針: 通常起動ではヒアリングと要件整理に必要な最小情報だけを読み、対外文面やブランド調整が必要なときだけ補助資料を追加する
 
 ## 連携先
 - 桐島 蓮（要件を開発仕様に変換する際の技術相談）
