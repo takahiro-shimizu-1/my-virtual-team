@@ -53,6 +53,21 @@ class RuntimeFlowTests(unittest.TestCase):
         self.assertEqual(route["execution_recommendation"]["github_profile"], "vt-implementation-auto")
         self.assertEqual(route["execution_recommendation"]["local_provider"], "codex")
 
+    def test_route_falls_back_for_english_docs_prompt_without_command(self) -> None:
+        route = route_request("Create a new file docs/github-smoke-codex.md with one short sentence.", "")
+        self.assertEqual(route["owner"]["agent_id"], "komiya-sakura")
+        self.assertEqual(route["preferred_department"], "05-admin")
+        self.assertEqual(route["execution_recommendation"]["local_provider"], "codex")
+
+    def test_route_falls_back_for_english_planning_prompt_without_command(self) -> None:
+        route = route_request(
+            "Create a short architecture review plan for this repository in docs/github-smoke-auto-plan.md.",
+            "",
+        )
+        self.assertEqual(route["owner"]["agent_id"], "horie-ryo")
+        self.assertEqual(route["preferred_department"], "01-strategy")
+        self.assertEqual(route["execution_recommendation"]["local_provider"], "claude")
+
     def test_plan_request_builds_sequential_workflow(self) -> None:
         planned = plan_request(
             self.conn,

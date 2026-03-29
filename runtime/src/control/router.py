@@ -65,6 +65,29 @@ def _paths_for_agent(agent_id: str, skill_name: str | None = None) -> list[str]:
     return deduped
 
 
+def _fallback_department(prompt: str, normalized_command: str, top_skill: dict | None) -> str:
+    recommendation = recommend_execution(
+        prompt=prompt,
+        command=normalized_command,
+        matched_skill=top_skill["name"] if top_skill else "",
+        workflow_name="single-agent-fast-path",
+    )
+    intent = recommendation.get("intent", "")
+    lowered = prompt.lower()
+
+    if intent == "planning":
+        return "01-strategy"
+    if intent == "research":
+        return "04-research"
+    if intent == "content":
+        return "03-marketing"
+    if intent == "implementation":
+        if any(token in lowered for token in ("readme", "docs/", "documentation", "quickstart", ".md", "guide", "runbook")):
+            return "05-admin"
+        return "02-development"
+    return ""
+
+
 def route_request(prompt: str, command: str | None = None, top_n: int = 3) -> dict:
     normalized_command = normalize_command(command)
     preferred_department = department_for_command(normalized_command)
@@ -123,6 +146,20 @@ def route_request(prompt: str, command: str | None = None, top_n: int = 3) -> di
             for agent in load_agents_registry()
             if agent.get("department") == preferred_department
         ]
+
+    if not ranked_agents and not preferred_department:
+        inferred_department = _fallback_department(prompt, normalized_command, top_skill)
+        if inferred_department:
+            preferred_department = inferred_department
+            ranked_agents = [
+                {
+                    **agent,
+                    "score": 1,
+                    "reasons": [f"fallback-intent={inferred_department}"],
+                }
+                for agent in load_agents_registry()
+                if agent.get("department") == inferred_department
+            ]
 
     ranked_agents.sort(key=lambda item: (-item["score"], item["agent_id"]))
 

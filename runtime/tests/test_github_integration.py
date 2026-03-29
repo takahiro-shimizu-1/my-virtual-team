@@ -140,6 +140,22 @@ class GitHubIntegrationTests(unittest.TestCase):
         self.assertEqual(result["action"], "route")
         self.assertEqual(result["comment"]["status"], "dry_run")
 
+    def test_bridge_routes_english_docs_issue_in_dry_run(self) -> None:
+        bridge = load_bridge_module()
+        event = {
+            "repository": {"full_name": "example-org/example-repo"},
+            "issue": {
+                "number": 18,
+                "title": "[smoke][auto] README quickstart update via native agent",
+                "body": "Please add or refine a short quickstart section in README.md for native-agent smoke testing.",
+            },
+        }
+        result = bridge.handle_event("issues", event, dry_run=True)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["action"], "issue_routed")
+        self.assertEqual(result["route"]["owner"]["agent_id"], "komiya-sakura")
+        self.assertEqual(result["comment"]["status"], "dry_run")
+
 
 if __name__ == "__main__":
     unittest.main()
