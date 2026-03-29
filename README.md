@@ -25,7 +25,7 @@
 npm run bootstrap
 ```
 
-これで registry build、graph build、runtime migrate、v4 validation をまとめて実行します。fresh clone 直後はまずこれを 1 回流してください。
+これで registry build、graph build、runtime migrate、v4 validation をまとめて実行します。初回クローン直後はまずこれを 1 回実行してください。
 
 動作確認:
 
