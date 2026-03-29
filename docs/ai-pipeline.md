@@ -2,16 +2,16 @@
 
 ## 目的
 
-`line-harness-oss` から一般化可能な GitHub AI pipeline を `my-virtual-team` に吸収する。
+`line-harness-oss` から一般化可能な GitHub AI pipeline を `my-virtual-team` に吸収しつつ、既定は GitHub subscription-native agents で動かす。
 
 ## 構成
 
 - `claude-decompose.yml`
-  issue に `claude` または `auto` label が付くと、Claude が atomic / decomposition を判定する
+  issue に `claude` または `auto` label が付くと、repo-local planner が atomic / decomposition を判定し、subscription-based implementation flow へ渡す
 - `copilot-assign.yml`
-  issue に `copilot` または `auto` label が付くと、Copilot coding agent を assign する
+  issue に `copilot` または `auto` label が付くと、既定で `copilot-swe-agent` を assign する
 - `claude-review.yml`
-  PR opened / synchronize / reopened で Claude review を行う
+  PR opened / synchronize / reopened で既定の native agent mention を投稿する
 - `auto-merge.yml`
   review approved と check success 後に自動 merge を試みる
 - `copilot-watchdog.yml`
@@ -25,32 +25,38 @@
 - `runtime-maintenance.yml`
   watcher / self-improve / health snapshot を定期実行する
 
-## 必要な secrets
+## 既定の実行方式
 
-- `COPILOT_PAT`
-  Copilot agent assign 用。`github.token` では足りない場合がある
-- `ANTHROPIC_API_KEY`
-  Claude review / decomposition 用
-- または `CLAUDE_CODE_OAUTH_TOKEN_1..3`
-  Claude Code OAuth token fallback
+- 既定:
+  `github.token` + GitHub Copilot / third-party agent subscription
+- 実装担当 agent:
+  repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT`
+  未設定時は `copilot-swe-agent`
+- PR mention agent:
+  repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION`
+  未設定時は `@copilot`
+
+`@claude` や `@codex` など GitHub 側で有効化された third-party agent に切り替えたい場合は repo variable だけ差し替えればよい。
+
+## 任意の API fallback
+
+必要なら vendor CLI / API ベースの workflow に戻せるが、それは既定ではない。  
+この repo の既定ルートは subscription-native agents である。
 
 ## 運用の基本形
 
 1. issue を作る
 2. `claude` か `auto` label を付ける
-3. Claude が atomic 判定または sub-issue 分解を返す
-4. atomic issue には `copilot` label が付き、Copilot が実装を開始する
-5. PR が作られたら Claude review が走る
+3. local planner が atomic 判定または sub-issue 分解を返す
+4. atomic issue には `copilot` label が付き、native coding agent が実装を開始する
+5. PR が作られたら native review handoff comment が走る
 6. review / checks が揃えば auto-merge を試みる
 7. 定期 maintenance と weekly reindex が裏側の health を保つ
 
 ## Secret 未設定時の挙動
 
-- Claude secret がない場合:
-  decomposition / review workflow は skip 理由を comment or review body に残す
-- `COPILOT_PAT` がない場合:
-  copilot assign workflow は skip comment を返す
-- つまり secret 未設定でも generic pipeline 自体は壊れず、未設定理由が GitHub 上に出る
+既定ルートは secret 不要。  
+subscription-native agent が account / org policy で有効なら、そのまま GitHub 上で動く。
 
 ## いまの境界
 

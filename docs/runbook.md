@@ -135,6 +135,11 @@ GitHub-hosted smoke test:
 gh workflow run github-ops.yml --ref <branch> -f scenario=issues -f prompt='API設計レビューをお願いします'
 ```
 
+native agent defaults:
+
+- implementation: repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` or `copilot-swe-agent`
+- PR mention: repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION` or `@copilot`
+
 定期運用 workflow:
 
 - `.github/workflows/runtime-maintenance.yml`

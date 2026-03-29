@@ -23,8 +23,8 @@
 | `gitnexus-stable-ops` | weekly full reindex | 吸収済み | `gitnexus-weekly.yml` を追加 |
 | `line-harness-oss` | event bus / health / runbook / watcher | 吸収済み | 維持 |
 | `line-harness-oss` | GitHub issue / PR bridge | 吸収済み | route / plan / close / issue assign / PR comment まで統合 |
-| `line-harness-oss` | Claude decompose pipeline | 吸収済み | workflow 実装済み。secret 未設定時は graceful skip |
-| `line-harness-oss` | Claude AI review pipeline | 吸収済み | workflow 実装済み。secret 未設定時は graceful skip |
+| `line-harness-oss` | Claude decompose pipeline | 吸収済み | native-first planner に置換し、subscription route を既定化 |
+| `line-harness-oss` | Claude AI review pipeline | 吸収済み | native agent mention route に置換し、subscription route を既定化 |
 | `line-harness-oss` | auto-merge pipeline | 吸収済み | workflow 実装済み |
 | `line-harness-oss` | Copilot watchdog | 吸収済み | workflow 実装済み |
 | `line-harness-oss` | Cloudflare deploy / preview | 未吸収 | domain-specific のため対象外 |
@@ -60,4 +60,4 @@
 - 3 source repo の「一般化可能な機能」が `my-virtual-team` に実装されている
 - 削るのは domain-specific なものだけと明文化されている
 - GitHub 上の AI pipeline が `route / plan / close` だけで止まらない
-- secret が未設定でも workflow が fail-open ではなく、skip 理由を返せる
+- GitHub 上の AI workflow が subscription-native agents を既定ルートにしている

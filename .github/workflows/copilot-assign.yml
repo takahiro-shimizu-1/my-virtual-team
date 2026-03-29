@@ -12,30 +12,47 @@ jobs:
   assign-copilot:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'copilot' || github.event.label.name == 'auto'
+    env:
+      VIRTUAL_TEAM_IMPLEMENTATION_AGENT: ${{ vars.VIRTUAL_TEAM_IMPLEMENTATION_AGENT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Assign GitHub Copilot
+      - name: Assign native coding agent
+        id: assign
         env:
-          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            gh issue comment ${{ github.event.issue.number }} \
-              --repo ${{ github.repository }} \
-              --body "⚠️ Copilot assignment skipped: \`COPILOT_PAT\` secret is not configured."
+          set +e
+          AGENT_LOGIN="${VIRTUAL_TEAM_IMPLEMENTATION_AGENT:-copilot-swe-agent}"
+          OUTPUT=$(./scripts/github-issue.sh github-issue-assign \
+            --issue-number ${{ github.event.issue.number }} \
+            --assignee "$AGENT_LOGIN" \
+            --repo ${{ github.repository }} 2>&1)
+          STATUS=$?
+          set -e
+
+          {
+            echo "agent_login=$AGENT_LOGIN"
+            echo "status=$STATUS"
+            echo "result<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$STATUS" -ne 0 ]; then
             exit 0
           fi
-
-          ./scripts/github-issue.sh github-issue-assign \
-            --issue-number ${{ github.event.issue.number }} \
-            --assignee copilot-swe-agent \
-            --repo ${{ github.repository }}
 
       - name: Comment assignment confirmation
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "${{ steps.assign.outputs.status }}" = "0" ]; then
+            BODY="Native coding agent \`${{ steps.assign.outputs.agent_login }}\` has been assigned to this issue."
+          else
+            BODY="⚠️ Native coding agent assignment did not complete for \`${{ steps.assign.outputs.agent_login }}\`.\n\nPlease confirm the agent is enabled in GitHub Copilot policies for this repo/account, or set `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` to an available agent login."
+          fi
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
-            --body "GitHub Copilot has been assigned to this issue."
+            --body "$BODY"

@@ -12,66 +12,61 @@ jobs:
   decompose:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'claude' || github.event.label.name == 'auto'
+    env:
+      VIRTUAL_TEAM_IMPLEMENTATION_AGENT: ${{ vars.VIRTUAL_TEAM_IMPLEMENTATION_AGENT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code@latest
+      - name: Setup Python
+        uses: actions/setup-python@v6
 
-      - name: Analyze issue with Claude
+      - name: Analyze issue with local planner
         id: analyze
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN_1: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_1 }}
-          CLAUDE_CODE_OAUTH_TOKEN_2: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
-          CLAUDE_CODE_OAUTH_TOKEN_3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_3 }}
-          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN_2:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN_3:-}" ]; then
-            echo "analysis={\"atomic\":true,\"reason\":\"Claude secret is not configured\",\"subtasks\":[]}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
 
-          gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json title,body > /tmp/issue.json
+          root = Path.cwd()
+          src = root / "runtime" / "src"
+          for candidate in (src, src / "control", src / "registry"):
+            if str(candidate) not in sys.path:
+              sys.path.insert(0, str(candidate))
 
-          cat > /tmp/claude-prompt.txt <<'EOF'
-          You are a technical project manager.
-          Decide whether this GitHub issue is atomic enough for one implementation PR, or should be decomposed into smaller sub-issues.
+          from control.decomposer import decompose_request
 
-          Return JSON only:
-          {
-            "atomic": true,
-            "reason": "brief reason",
-            "subtasks": ["subtask 1", "subtask 2"]
-          }
-          EOF
+          title = os.environ.get("ISSUE_TITLE", "").strip()
+          body = os.environ.get("ISSUE_BODY", "").strip()
+          prompt = title if not body else f"{title}\n\n{body}"
+          try:
+            plan = decompose_request(prompt)
+            tasks = plan.get("tasks", [])
+            atomic = len(tasks) <= 1
+            analysis = {
+              "atomic": atomic,
+              "reason": "single-agent-fast-path" if atomic else plan.get("workflow_name", "multi-phase"),
+              "subtasks": [task.get("title", "") for task in tasks[1:]] if len(tasks) > 1 else [],
+              "primary_task": tasks[0].get("title", "") if tasks else "",
+              "workflow_name": plan.get("workflow_name", ""),
+            }
+          except Exception as exc:
+            analysis = {
+              "atomic": True,
+              "reason": f"local planner fallback: {exc}",
+              "subtasks": [],
+              "primary_task": title,
+              "workflow_name": "single-agent-fast-path",
+            }
 
-          cat /tmp/issue.json >> /tmp/claude-prompt.txt
-
-          run_claude() {
-            if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
-              claude -p --output-format text --model claude-sonnet-4-6 < /tmp/claude-prompt.txt
-              return $?
-            fi
-            for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3; do
-              token="${!token_var:-}"
-              if [ -z "$token" ]; then
-                continue
-              fi
-              ANTHROPIC_API_KEY="" CLAUDE_CODE_OAUTH_TOKEN="$token" CLAUDE_NO_ANALYTICS=1 \
-                claude -p --output-format text --model claude-sonnet-4-6 < /tmp/claude-prompt.txt && return 0
-            done
-            return 1
-          }
-
-          ANALYSIS="$(run_claude || true)"
-          if [ -z "$ANALYSIS" ]; then
-            ANALYSIS='{"atomic":true,"reason":"Claude invocation failed","subtasks":[]}'
-          fi
-
-          ANALYSIS_CLEAN=$(printf '%s' "$ANALYSIS" | python3 -c "import json,re,sys; t=sys.stdin.read().strip(); t=re.sub(r'^\x60{3}json\\n?','',t); t=re.sub(r'\\n?\x60{3}$','',t.strip()); obj=json.loads(t); print(json.dumps(obj, ensure_ascii=False))" 2>/dev/null || echo '{"atomic":true,"reason":"parse error","subtasks":[]}')
-          echo "analysis=$ANALYSIS_CLEAN" >> "$GITHUB_OUTPUT"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+            fh.write(f"analysis={json.dumps(analysis, ensure_ascii=False)}\n")
+          PY
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
 
       - name: Handle decomposition result
         uses: actions/github-script@v7
@@ -87,7 +82,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: `Claude decomposition: atomic (${analysis.reason}). Adding \`copilot\` label.`,
+                body: `Native decomposition: atomic (${analysis.reason}). Adding \`copilot\` label for subscription-based agent execution.`,
               });
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
@@ -103,7 +98,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: subtask,
-                body: `Sub-issue decomposed from #${issue.number}: ${issue.title}`,
+                body: `Sub-issue decomposed from #${issue.number}: ${issue.title}\n\nNative workflow will route this to the default subscription-based coding agent.`,
                 labels: ['copilot', 'auto'],
               });
             }
@@ -112,5 +107,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: `Claude decomposition created ${analysis.subtasks.length} sub-issues. Reason: ${analysis.reason}`,
+              body: `Native decomposition created ${analysis.subtasks.length} sub-issues. Reason: ${analysis.reason}`,
             });

@@ -41,7 +41,7 @@ PR comment:
 
 `--dry-run` を付けると `gh api` を実行せず、送信予定 payload だけ確認できる。
 
-Copilot へ assign:
+Native coding agent へ assign:
 
 ```bash
 ./scripts/github-issue.sh github-issue-assign \
@@ -105,12 +105,14 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 
 - local: `gh auth login` 済み、または `GH_TOKEN` / `GITHUB_TOKEN`
 - GitHub Actions: `secrets.GITHUB_TOKEN`
-- Claude pipeline: `ANTHROPIC_API_KEY` または `CLAUDE_CODE_OAUTH_TOKEN_1..3`
-- Copilot assign pipeline: `COPILOT_PAT`
+- 既定の native agent route では追加 secret は不要
+- 実装担当は repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` で差し替え可能
+- PR mention は repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION` で差し替え可能
 
-## Copilot coding agent
+## Native coding agent
 
-この repo では `copilot-swe-agent` が assign 候補として見えるため、Issue を assign すると Copilot coding agent が作業を開始できる。
+この repo では既定で `copilot-swe-agent` を implementation agent として扱う。  
+GitHub 側で Anthropic Claude や OpenAI Codex の third-party agent を有効化している場合は、repo variable を変えるだけで native route を切り替えられる。
 
 実測では以下が確認できた。
 
