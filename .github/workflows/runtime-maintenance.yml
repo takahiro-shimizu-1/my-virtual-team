@@ -1,0 +1,45 @@
+name: runtime-maintenance
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bootstrap graph/runtime
+        run: npm run bootstrap
+
+      - name: Run maintenance loop
+        run: python3 runtime/src/cli/maintenance.py run --days 14 --created-by github-actions > /tmp/runtime-maintenance.json
+
+      - name: Upload maintenance snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-maintenance-${{ github.run_id }}
+          path: /tmp/runtime-maintenance.json
+          retention-days: 14

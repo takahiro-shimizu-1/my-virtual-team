@@ -1,0 +1,79 @@
+name: gitnexus-impact
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  impact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build graph
+        run: |
+          npm run registry:build
+          npm run graph:build
+
+      - name: Build impact report
+        id: impact
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed-files.txt
+          python3 runtime/src/gitnexus/impact_report.py --repo . --db .gitnexus/agent-graph.db --stdin --markdown < /tmp/changed-files.txt > /tmp/impact.md
+          {
+            echo "body<<EOF"
+            cat /tmp/impact.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post PR comment
+        uses: actions/github-script@v7
+        env:
+          IMPACT_BODY: ${{ steps.impact.outputs.body }}
+        with:
+          script: |
+            const body = process.env.IMPACT_BODY;
+            const marker = '## GitNexus Impact Report';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

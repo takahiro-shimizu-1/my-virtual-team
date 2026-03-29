@@ -13,8 +13,9 @@ if str(SRC_ROOT) not in sys.path:
 
 from control.runner_bridge import plan_request
 from control.codex_runner import run_codex_task
+from control.maintenance import run_maintenance
 from control.router import route_request
-from control.skill_monitor import analyze_skill_health, enqueue_improvement_tasks
+from control.skill_monitor import analyze_skill_health, enqueue_improvement_tasks, enqueue_knowledge_review_tasks
 from control.task_store import complete_task, create_task, dispatch_ready_tasks, resolve_task_approval
 from db.connection import connect_db
 from db.migrate import apply_migrations
@@ -188,6 +189,45 @@ class RuntimeFlowTests(unittest.TestCase):
         task = self.conn.execute("SELECT title, source FROM tasks WHERE task_id = ?", (created["task_id"],)).fetchone()
         self.assertEqual(task["source"], "self-improve")
         self.assertIn("api-design-review", task["title"])
+
+    def test_knowledge_changes_enqueue_revalidation_task(self) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO knowledge_diffs (path, diff_type, detail_json, created_at)
+            VALUES (?, 'updated', '{}', '2026-03-23T00:00:00+00:00')
+            """,
+            ("guidelines/security-policy.md",),
+        )
+        self.conn.commit()
+
+        result = enqueue_knowledge_review_tasks(self.conn, recent_days=30, dry_run=False)
+        created = next(item for item in result["tasks"] if item["status"] == "created")
+        task = self.conn.execute(
+            "SELECT title, source, affected_files_json FROM tasks WHERE task_id = ?",
+            (created["task_id"],),
+        ).fetchone()
+        self.assertEqual(task["source"], "knowledge-watcher")
+        self.assertIn("api-design-review", task["title"])
+        self.assertIn("guidelines/security-policy.md", task["affected_files_json"])
+
+    def test_maintenance_loop_runs_watcher_and_task_generation(self) -> None:
+        watch_root = Path(self.tmpdir.name) / "watched"
+        watch_root.mkdir(parents=True, exist_ok=True)
+        (watch_root / "note.md").write_text("# updated\n", encoding="utf-8")
+        self.conn.execute(
+            """
+            INSERT INTO knowledge_diffs (path, diff_type, detail_json, created_at)
+            VALUES (?, 'updated', '{}', '2026-03-23T00:00:00+00:00')
+            """,
+            ("guidelines/security-policy.md",),
+        )
+        self.conn.commit()
+
+        result = run_maintenance(self.conn, recent_days=30, roots=[str(watch_root)], dry_run=False)
+        self.assertEqual(result["status"], "ok")
+        self.assertGreaterEqual(result["watch"]["scanned_files"], 1)
+        self.assertGreaterEqual(len(result["knowledge_review"]["tasks"]), 1)
+        self.assertIn("status_counts", result["health"])
 
 
 if __name__ == "__main__":

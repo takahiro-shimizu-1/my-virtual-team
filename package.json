@@ -14,6 +14,7 @@
     "graph:status": "python3 runtime/src/gitnexus/agent_graph_builder.py status . --json",
     "graph:list": "python3 runtime/src/gitnexus/agent_graph_builder.py list . --json",
     "graph:context": "bash scripts/resolve-agent-context.sh",
+    "graph:impact": "python3 runtime/src/gitnexus/impact_report.py --json",
     "graph:doctor": "bash scripts/gitnexus-doctor.sh",
     "graph:smoke": "bash scripts/gitnexus-smoke-test.sh",
     "graph:install-hooks": "bash scripts/gitnexus-install-hooks.sh",
@@ -26,6 +27,7 @@
     "runtime:integrations": "python3 runtime/src/cli/integrations.py",
     "runtime:skill-analyze": "python3 runtime/src/cli/skill_improve.py analyze",
     "runtime:self-improve": "python3 runtime/src/cli/skill_improve.py enqueue",
+    "runtime:maintain": "python3 runtime/src/cli/maintenance.py run",
     "runtime:test": "python3 -m unittest discover -s runtime/tests -p 'test_*.py'",
     "validate:v4": "python3 scripts/validate-v4-team.py"
   }

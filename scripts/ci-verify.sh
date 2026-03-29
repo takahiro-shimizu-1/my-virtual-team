@@ -68,6 +68,16 @@ assert "桐島 蓮" in payload["matched_agents"] or "九条 ハル" in payload["
 assert any(path.endswith("api-design-review.md") for path in payload["files_to_read"]), payload
 PY
 
+python3 runtime/src/gitnexus/impact_report.py --repo . --db .gitnexus/agent-graph.db --markdown README.md docs/runbook.md > "$TMP_DIR/impact.md"
+python3 - "$TMP_DIR/impact.md" <<'PY'
+import pathlib
+import sys
+
+body = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+assert "## GitNexus Impact Report" in body, body
+assert "risk_level" in body, body
+PY
+
 VIRTUAL_TEAM_SKIP_ENSURE=1 bash scripts/runtime-task.sh codex --prompt "README.md を整備して quickstart をまとめて" --command admin --target-path README.md --dry-run > "$TMP_DIR/codex-dry-run.json"
 python3 - "$TMP_DIR/codex-dry-run.json" <<'PY'
 import json
@@ -81,6 +91,7 @@ assert payload["execution"]["output_paths"] == ["README.md"], payload
 PY
 
 python3 runtime/src/cli/watch.py scan > "$TMP_DIR/watch.json"
+python3 runtime/src/cli/maintenance.py run --days 30 --dry-run > "$TMP_DIR/maintenance.json"
 python3 runtime/src/cli/events.py publish > "$TMP_DIR/events.json"
 python3 runtime/src/cli/health.py > "$TMP_DIR/health.json"
 
@@ -150,6 +161,17 @@ import sys
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert "status_counts" in payload, payload
 assert "knowledge_diffs" in payload, payload
+PY
+
+python3 - "$TMP_DIR/maintenance.json" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["status"] == "ok", payload
+assert "self_improve" in payload, payload
+assert "knowledge_review" in payload, payload
 PY
 
 FINAL_STATUS="$(git status --porcelain)"
