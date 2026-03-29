@@ -3,9 +3,21 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_PATH="$ROOT/.gitnexus/agent-graph.db"
-FORCE="${1:-}"
 BUILDER_PY="${GITNEXUS_AGENT_GRAPH_BUILDER:-$ROOT/../gitnexus-stable-ops/lib/agent_graph_builder.py}"
 USE_GNI=0
+FORCE=0
+QUIET=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --force)
+      FORCE=1
+      ;;
+    --quiet)
+      QUIET=1
+      ;;
+  esac
+done
 
 if command -v gni >/dev/null 2>&1; then
   USE_GNI=1
@@ -15,6 +27,24 @@ if [[ ! -f "$BUILDER_PY" && "$USE_GNI" -ne 1 ]]; then
   echo "GitNexus builder not found. Set GITNEXUS_AGENT_GRAPH_BUILDER or install gitnexus-stable-ops." >&2
   exit 1
 fi
+
+say() {
+  if [[ "$QUIET" -ne 1 ]]; then
+    echo "$@"
+  fi
+}
+
+run_quietly() {
+  local stderr_file
+  stderr_file="$(mktemp)"
+  if "$@" >/dev/null 2>"$stderr_file"; then
+    rm -f "$stderr_file"
+    return 0
+  fi
+  cat "$stderr_file" >&2
+  rm -f "$stderr_file"
+  return 1
+}
 
 mtime() {
   if stat -c %Y "$1" >/dev/null 2>&1; then
@@ -61,14 +91,22 @@ latest_source_mtime() {
 
 run_agent_index() {
   if [[ -f "$BUILDER_PY" ]]; then
-    echo "Building agent graph via $BUILDER_PY"
-    python3 "$BUILDER_PY" build "$ROOT" --force
+    say "Building agent graph via $BUILDER_PY"
+    if [[ "$QUIET" -eq 1 ]]; then
+      run_quietly python3 "$BUILDER_PY" build "$ROOT" --force
+    else
+      python3 "$BUILDER_PY" build "$ROOT" --force
+    fi
     return 0
   fi
 
   if [[ "$USE_GNI" -eq 1 ]]; then
-    echo "Building agent graph via gni"
-    gni agent-index .
+    say "Building agent graph via gni"
+    if [[ "$QUIET" -eq 1 ]]; then
+      run_quietly gni agent-index .
+    else
+      gni agent-index .
+    fi
     return 0
   fi
 
@@ -77,16 +115,22 @@ run_agent_index() {
 }
 
 cd "$ROOT"
-npm run registry:build >/dev/null
+if [[ "${SKIP_REGISTRY_BUILD:-0}" != "1" ]]; then
+  if [[ "$QUIET" -eq 1 ]]; then
+    run_quietly npm run registry:build
+  else
+    npm run registry:build
+  fi
+fi
 
-if [[ "$FORCE" == "--force" ]]; then
-  echo "Force rebuilding agent graph..."
+if [[ "$FORCE" -eq 1 ]]; then
+  say "Force rebuilding agent graph..."
   run_agent_index
   exit 0
 fi
 
 if [[ ! -f "$DB_PATH" ]]; then
-  echo "Agent graph DB not found. Building..."
+  say "Agent graph DB not found. Building..."
   run_agent_index
   exit 0
 fi
@@ -95,8 +139,8 @@ SOURCE_MTIME="$(latest_source_mtime)"
 DB_MTIME="$(mtime "$DB_PATH")"
 
 if (( SOURCE_MTIME > DB_MTIME )); then
-  echo "Agent graph is stale. Rebuilding..."
+  say "Agent graph is stale. Rebuilding..."
   run_agent_index
 else
-  echo "Agent graph is fresh. Skipping rebuild."
+  say "Agent graph is fresh. Skipping rebuild."
 fi

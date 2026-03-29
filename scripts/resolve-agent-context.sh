@@ -10,9 +10,8 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
-if [[ ! -f "$DB_PATH" ]]; then
-  echo "Agent graph DB not found. Run: npm run graph:build" >&2
-  exit 1
+if [[ "${VIRTUAL_TEAM_SKIP_ENSURE:-0}" != "1" ]]; then
+  bash "$ROOT/scripts/ensure-v4-ready.sh" --quiet --skip-migrate --skip-validate
 fi
 
 if [[ ! -f "$RESOLVER_PY" ]]; then

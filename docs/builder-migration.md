@@ -19,7 +19,9 @@
 - `runtime/src/health/`
 - `runtime/src/watchers/`
 - `scripts/build-registry.js`
+- `scripts/ensure-v4-ready.sh`
 - `scripts/rebuild-agent-graph.sh`
+- `scripts/resolve-agent-context.sh`
 - `scripts/runtime-task.sh`
 - `scripts/log-activity.sh`
 - `scripts/slack-notify.sh`
@@ -35,6 +37,7 @@
 5. builder 完了時に以下を実行できる状態にする
 
 ```bash
+npm run bootstrap
 npm run registry:build
 npm run graph:build
 npm run runtime:migrate
@@ -59,4 +62,5 @@ npm run validate:v4
 - SQLite durable store
 - event-driven integrations
 - watcher / health / graph freshness まで含めて完成
+- `runtime:task` と `graph:context` は通常利用で self-healing に動く
 - `validate:v4` で構成検証できる

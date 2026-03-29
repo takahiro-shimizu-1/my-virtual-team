@@ -3,6 +3,14 @@
 ## Bootstrap
 
 ```bash
+npm run bootstrap
+```
+
+fresh clone 直後や builder 生成直後はこれを 1 回流せばよい。通常利用では `runtime:task` と `graph:context` が必要な準備を自動で実行する。
+
+または個別に:
+
+```bash
 npm run registry:build
 npm run graph:build
 npm run runtime:migrate
@@ -20,6 +28,8 @@ npm run validate:v4
 - v4 構成 validation が `ok`
 
 ## Chief の基本操作
+
+`runtime:task` は内部で registry build と migrate を自動実行する。`graph:context` は graph freshness を自動で整える。
 
 ### 単発 task
 

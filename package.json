@@ -7,6 +7,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "bootstrap": "bash scripts/ensure-v4-ready.sh",
     "registry:build": "node scripts/build-registry.js",
     "graph:build": "bash scripts/rebuild-agent-graph.sh",
     "graph:context": "bash scripts/resolve-agent-context.sh",

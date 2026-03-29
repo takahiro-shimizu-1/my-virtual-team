@@ -16,19 +16,98 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function writeTextIfChanged(targetPath, content) {
+  try {
+    const existing = fs.readFileSync(targetPath, 'utf8');
+    if (existing === content) {
+      return false;
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  fs.writeFileSync(targetPath, content);
+  return true;
+}
+
+function readJsonIfExists(targetPath) {
+  try {
+    return JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function writeGeneratedJson(targetPath, payload) {
+  const nextComparable = {
+    version: '1.0',
+    ...payload,
+  };
+  const existing = readJsonIfExists(targetPath);
+
+  if (existing) {
+    const { generated_at: _generatedAt, ...existingComparable } = existing;
+    if (JSON.stringify(existingComparable) === JSON.stringify(nextComparable)) {
+      return false;
+    }
+  }
+
+  return writeTextIfChanged(
+    targetPath,
+    JSON.stringify(
+      {
+        ...nextComparable,
+        generated_at: new Date().toISOString(),
+      },
+      null,
+      2
+    ) + '\n'
+  );
+}
+
+function removePathIfExists(targetPath) {
+  try {
+    const stat = fs.lstatSync(targetPath);
+    if (stat.isDirectory() && !stat.isSymbolicLink()) {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+      return;
+    }
+    fs.unlinkSync(targetPath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+}
+
 function ensureSymlink(linkPath, targetPath) {
   ensureDir(path.dirname(linkPath));
   const relativeTarget = path.relative(path.dirname(linkPath), targetPath);
   try {
     const existing = fs.readlinkSync(linkPath);
     if (existing === relativeTarget) return;
-    fs.unlinkSync(linkPath);
+    removePathIfExists(linkPath);
   } catch (error) {
-    if (fs.existsSync(linkPath)) {
-      fs.rmSync(linkPath, { recursive: true, force: true });
+    if (error.code !== 'ENOENT' && fs.existsSync(linkPath)) {
+      removePathIfExists(linkPath);
     }
   }
-  fs.symlinkSync(relativeTarget, linkPath);
+  try {
+    fs.symlinkSync(relativeTarget, linkPath);
+  } catch (error) {
+    if (error.code !== 'EEXIST') {
+      throw error;
+    }
+    const existing = fs.readlinkSync(linkPath);
+    if (existing !== relativeTarget) {
+      removePathIfExists(linkPath);
+      fs.symlinkSync(relativeTarget, linkPath);
+    }
+  }
 }
 
 function mirrorMarkdownDir(sourceDir, targetDir) {
@@ -317,29 +396,11 @@ function build() {
   }
 
   agents.sort((a, b) => a.agent_id.localeCompare(b.agent_id));
-
-  const meta = {
-    version: '1.0',
-    generated_at: new Date().toISOString(),
-  };
-
-  fs.writeFileSync(
-    path.join(REGISTRY_DIR, 'agents.generated.json'),
-    JSON.stringify({ ...meta, agents }, null, 2) + '\n'
-  );
-
-  fs.writeFileSync(
-    path.join(REGISTRY_DIR, 'context-policy.generated.json'),
-    JSON.stringify(
-      {
-        ...meta,
-        guidelines: guidelineMap,
-        agents: agentPolicies,
-      },
-      null,
-      2
-    ) + '\n'
-  );
+  writeGeneratedJson(path.join(REGISTRY_DIR, 'agents.generated.json'), { agents });
+  writeGeneratedJson(path.join(REGISTRY_DIR, 'context-policy.generated.json'), {
+    guidelines: guidelineMap,
+    agents: agentPolicies,
+  });
 
   if (fs.existsSync(GENERATED_SKILLS_DIR)) {
     const skillFiles = walk(GENERATED_SKILLS_DIR);
@@ -360,13 +421,12 @@ function build() {
   }
 
   generatedSkills.sort((a, b) => a.name.localeCompare(b.name));
-  fs.writeFileSync(
-    path.join(REGISTRY_DIR, 'skills.generated.json'),
-    JSON.stringify({ ...meta, skills: generatedSkills }, null, 2) + '\n'
-  );
+  writeGeneratedJson(path.join(REGISTRY_DIR, 'skills.generated.json'), {
+    skills: generatedSkills,
+  });
 
   agentCompat.sort((a, b) => a.agent_id.localeCompare(b.agent_id));
-  fs.writeFileSync(AGENTS_COMPAT_FILE, buildAgentsClaude(agentCompat));
+  writeTextIfChanged(AGENTS_COMPAT_FILE, buildAgentsClaude(agentCompat));
   ensureSymlink(
     path.join(GITNEXUS_KNOWLEDGE_DIR, 'AGENTS_CLAUDE.md'),
     AGENTS_COMPAT_FILE

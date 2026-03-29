@@ -16,6 +16,7 @@
 ## 現在の運用コマンド
 
 ```bash
+npm run bootstrap
 npm run registry:build
 npm run graph:build
 npm run runtime:migrate
@@ -25,6 +26,9 @@ npm run runtime:events
 npm run runtime:health
 npm run validate:v4
 ```
+
+通常利用では `runtime:task` が registry build と migrate を自動実行し、`graph:context` は graph freshness を自動で整える。
+registry 生成物は内容が変わらない限り再書き込みしないため、普段の task 実行で repo が毎回 dirty になることもない。
 
 ## representative behavior
 
