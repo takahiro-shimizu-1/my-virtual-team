@@ -114,7 +114,7 @@ npm run validate:v4
 - `runtime:skill-analyze`: `skill_runs` から avg / recent / trend / flagged を計算する
 - `runtime:self-improve`: flagged skill を improvement task として enqueue する
 - `github:labels`: GitHub automation に必要な label (`auto`, `copilot`, `claude`, `codex`, `needs-human`) を揃える
-- `github:agent-task`: `gh agent-task create` を使って subscription-native coding agent を起動する
+- `github:agent-task`: `gh agent-task create` を使って subscription-native coding agent を起動する emergency fallback / smoke tool
 - `ci:verify`: bootstrap + runtime test + representative route/context/Codex dry-run smoke + clean worktree を一括確認
 - `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 
@@ -131,7 +131,7 @@ npm run validate:v4
 `--dry-run` を付けると GitHub へ送信せず payload を確認できる。
 詳細は `docs/github-ops.md`。
 
-GitHub bridge が自動で行うのは route / plan / close までで、実際の repo 変更は local の `runtime:task -- codex ...` か GitHub Copilot assign で進める。
+GitHub bridge が自動で行うのは route / plan / close までで、issue 実装開始は `copilot-assign.yml` の subscription-native kickoff が担当する。local の `runtime:task -- codex ...` は local runner を使いたいときの別経路。
 
 GitHub-hosted smoke test:
 
@@ -143,7 +143,8 @@ native agent defaults:
 
 - implementation: repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` or `copilot-swe-agent`
 - PR mention: repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION` or `@copilot`
-- user-authenticated kickoff: `npm run github:agent-task -- issue --issue-number <n> --follow`
+- GitHub-hosted kickoff: issue に `auto` または `copilot` label を付ける
+- local emergency fallback: `npm run github:agent-task -- issue --issue-number <n> --follow`
 
 定期運用 workflow:
 

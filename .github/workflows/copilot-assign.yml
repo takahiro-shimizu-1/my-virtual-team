@@ -14,12 +14,41 @@ jobs:
     if: github.event.label.name == 'copilot' || github.event.label.name == 'auto'
     env:
       VIRTUAL_TEAM_IMPLEMENTATION_AGENT: ${{ vars.VIRTUAL_TEAM_IMPLEMENTATION_AGENT }}
+      PREFERRED_GH_TOKEN: ${{ secrets.VIRTUAL_TEAM_GH_USER_TOKEN }}
+      FALLBACK_GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Assign native coding agent
+      - name: Launch subscription-native coding agent
+        id: launch
+        run: |
+          if [ -n "${PREFERRED_GH_TOKEN}" ]; then
+            export GH_TOKEN="${PREFERRED_GH_TOKEN}"
+            TOKEN_SOURCE="repo-secret"
+          else
+            export GH_TOKEN="${FALLBACK_GH_TOKEN}"
+            TOKEN_SOURCE="github-token"
+          fi
+
+          set +e
+          OUTPUT=$(python3 scripts/github-agent-task.py issue \
+            --issue-number ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} 2>&1)
+          STATUS=$?
+          set -e
+
+          {
+            echo "token_source=$TOKEN_SOURCE"
+            echo "status=$STATUS"
+            echo "result<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fallback to native assign API
         id: assign
+        if: steps.launch.outputs.status != '0'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -40,18 +69,16 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-          if [ "$STATUS" -ne 0 ]; then
-            exit 0
-          fi
-
-      - name: Comment assignment confirmation
+      - name: Comment kickoff result
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ steps.assign.outputs.status }}" = "0" ]; then
-            BODY="Native coding agent ${{ steps.assign.outputs.agent_login }} has been assigned to this issue."
+          if [ "${{ steps.launch.outputs.status }}" = "0" ]; then
+            BODY="Subscription-native coding agent kickoff started automatically for this issue.\n\nToken source: \`${{ steps.launch.outputs.token_source }}\`."
+          elif [ "${{ steps.assign.outputs.status }}" = "0" ]; then
+            BODY="Native coding agent could not be started through \`gh agent-task create\`, but fallback assignment succeeded for \`${{ steps.assign.outputs.agent_login }}\`."
           else
-            BODY="⚠️ Native coding agent assignment did not complete for ${{ steps.assign.outputs.agent_login }}.\n\nIf this repo/account does not expose the agent to GitHub Actions, use the subscription-native user path instead:\n\n\`npm run github:agent-task -- issue --issue-number ${{ github.event.issue.number }} --follow\`\n\nYou can also set VIRTUAL_TEAM_IMPLEMENTATION_AGENT to another enabled native agent login."
+            BODY="⚠️ Automatic native coding agent kickoff did not complete.\n\nPrimary path:\n- \`gh agent-task create\` via \`${{ steps.launch.outputs.token_source || 'github-token' }}\`\n\nFallback assign path:\n- \`${{ steps.assign.outputs.agent_login || 'copilot-swe-agent' }}\`\n\nInspect workflow logs before retrying."
           fi
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \

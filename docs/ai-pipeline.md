@@ -9,7 +9,7 @@
 - `claude-decompose.yml`
   issue に `claude` または `auto` label が付くと、repo-local planner が atomic / decomposition を判定し、subscription-based implementation flow へ渡す
 - `copilot-assign.yml`
-  issue に `copilot` または `auto` label が付くと、既定で `copilot-swe-agent` を assign する
+  issue に `copilot` または `auto` label が付くと、既定で subscription-native coding agent kickoff を実行する
 - `claude-review.yml`
   PR opened / synchronize / reopened で既定の native agent mention を投稿する
 - `auto-merge.yml`
@@ -38,6 +38,8 @@
 
 `@claude` や `@codex` など GitHub 側で有効化された third-party agent に切り替えたい場合は repo variable だけ差し替えればよい。
 
+GitHub-hosted kickoff は `VIRTUAL_TEAM_GH_USER_TOKEN` を優先し、未設定時だけ `github.token` にフォールバックする。現在の repo では前者を既定にしている。
+
 ## 任意の API fallback
 
 必要なら vendor CLI / API ベースの workflow に戻せるが、それは既定ではない。  
@@ -48,15 +50,15 @@
 1. issue を作る
 2. `claude` か `auto` label を付ける
 3. local planner が atomic 判定または sub-issue 分解を返す
-4. atomic issue には `copilot` label が付き、native coding agent が実装を開始する
+4. atomic issue には `copilot` label が付き、GitHub Actions が subscription-native coding agent task を自動起動する
 5. PR が作られたら native review handoff comment が走る
 6. review / checks が揃えば auto-merge を試みる
 7. 定期 maintenance と weekly reindex が裏側の health を保つ
 
 ## Secret 未設定時の挙動
 
-既定ルートは secret 不要。  
-subscription-native agent が account / org policy で有効なら、そのまま GitHub 上で動く。
+native route 自体は vendor API secret 不要。  
+ただし GitHub Actions から user-authenticated に起動するため、既定では `VIRTUAL_TEAM_GH_USER_TOKEN` を使う。
 
 ## いまの境界
 
