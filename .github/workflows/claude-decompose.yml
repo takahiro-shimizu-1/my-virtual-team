@@ -1,0 +1,116 @@
+name: claude-decompose
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  decompose:
+    runs-on: ubuntu-latest
+    if: github.event.label.name == 'claude' || github.event.label.name == 'auto'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@latest
+
+      - name: Analyze issue with Claude
+        id: analyze
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN_1: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_1 }}
+          CLAUDE_CODE_OAUTH_TOKEN_2: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
+          CLAUDE_CODE_OAUTH_TOKEN_3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_3 }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN_2:-}" ] && [ -z "${CLAUDE_CODE_OAUTH_TOKEN_3:-}" ]; then
+            echo "analysis={\"atomic\":true,\"reason\":\"Claude secret is not configured\",\"subtasks\":[]}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh issue view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json title,body > /tmp/issue.json
+
+          cat > /tmp/claude-prompt.txt <<'EOF'
+          You are a technical project manager.
+          Decide whether this GitHub issue is atomic enough for one implementation PR, or should be decomposed into smaller sub-issues.
+
+          Return JSON only:
+          {
+            "atomic": true,
+            "reason": "brief reason",
+            "subtasks": ["subtask 1", "subtask 2"]
+          }
+          EOF
+
+          cat /tmp/issue.json >> /tmp/claude-prompt.txt
+
+          run_claude() {
+            if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+              claude -p --output-format text --model claude-sonnet-4-6 < /tmp/claude-prompt.txt
+              return $?
+            fi
+            for token_var in CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3; do
+              token="${!token_var:-}"
+              if [ -z "$token" ]; then
+                continue
+              fi
+              ANTHROPIC_API_KEY="" CLAUDE_CODE_OAUTH_TOKEN="$token" CLAUDE_NO_ANALYTICS=1 \
+                claude -p --output-format text --model claude-sonnet-4-6 < /tmp/claude-prompt.txt && return 0
+            done
+            return 1
+          }
+
+          ANALYSIS="$(run_claude || true)"
+          if [ -z "$ANALYSIS" ]; then
+            ANALYSIS='{"atomic":true,"reason":"Claude invocation failed","subtasks":[]}'
+          fi
+
+          ANALYSIS_CLEAN=$(printf '%s' "$ANALYSIS" | python3 -c "import json,re,sys; t=sys.stdin.read().strip(); t=re.sub(r'^\x60{3}json\\n?','',t); t=re.sub(r'\\n?\x60{3}$','',t.strip()); obj=json.loads(t); print(json.dumps(obj, ensure_ascii=False))" 2>/dev/null || echo '{"atomic":true,"reason":"parse error","subtasks":[]}')
+          echo "analysis=$ANALYSIS_CLEAN" >> "$GITHUB_OUTPUT"
+
+      - name: Handle decomposition result
+        uses: actions/github-script@v7
+        env:
+          ANALYSIS: ${{ steps.analyze.outputs.analysis }}
+        with:
+          script: |
+            const analysis = JSON.parse(process.env.ANALYSIS || '{"atomic":true,"reason":"missing analysis","subtasks":[]}');
+            const issue = context.payload.issue;
+
+            if (analysis.atomic) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Claude decomposition: atomic (${analysis.reason}). Adding \`copilot\` label.`,
+              });
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['copilot'],
+              }).catch(() => {});
+              return;
+            }
+
+            for (const subtask of analysis.subtasks || []) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: subtask,
+                body: `Sub-issue decomposed from #${issue.number}: ${issue.title}`,
+                labels: ['copilot', 'auto'],
+              });
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `Claude decomposition created ${analysis.subtasks.length} sub-issues. Reason: ${analysis.reason}`,
+            });

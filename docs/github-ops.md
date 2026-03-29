@@ -64,6 +64,8 @@ Copilot へ assign:
 
 `workflow_dispatch` では synthetic payload を `--dry-run` で流せるので、branch 上でも GitHub-hosted smoke test ができる。
 
+別系統の AI implementation pipeline は `docs/ai-pipeline.md` を参照。
+
 ## 自動応答
 
 Issue / PR が開かれると:
@@ -103,6 +105,8 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 
 - local: `gh auth login` 済み、または `GH_TOKEN` / `GITHUB_TOKEN`
 - GitHub Actions: `secrets.GITHUB_TOKEN`
+- Claude pipeline: `ANTHROPIC_API_KEY` または `CLAUDE_CODE_OAUTH_TOKEN_1..3`
+- Copilot assign pipeline: `COPILOT_PAT`
 
 ## Copilot coding agent
 

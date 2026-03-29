@@ -94,6 +94,8 @@ npm run runtime:task -- sweep
 npm run runtime:events
 npm run runtime:health
 npm run runtime:watch
+npm run runtime:skill-analyze
+npm run runtime:self-improve -- --dry-run
 npm run runtime:github-bridge -- handle --event-name issues --event-path event.json --dry-run
 npm run ci:verify
 npm run validate:v4
@@ -105,6 +107,8 @@ npm run validate:v4
 - `runtime:github-bridge`: GitHub issue / PR event payload を dry run で検証
 - `runtime:health`: queue / lock / recent failures / notifications / skill health を集計
 - `runtime:watch`: `agents/`, `guidelines/`, `templates/`, `.claude/rules/` の差分を `knowledge_diffs` へ記録
+- `runtime:skill-analyze`: `skill_runs` から avg / recent / trend / flagged を計算する
+- `runtime:self-improve`: flagged skill を improvement task として enqueue する
 - `ci:verify`: bootstrap + runtime test + representative route/context/Codex dry-run smoke + clean worktree を一括確認
 - `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 
@@ -144,7 +148,18 @@ gh workflow run github-ops.yml --ref <branch> -f scenario=issues -f prompt='API�
 ```bash
 npm run registry:build
 npm run graph:build
+npm run graph:status
+npm run graph:doctor
+npm run graph:smoke
+npm run graph:install-hooks
 ```
+
+意味:
+
+- `graph:status`: 現在の graph node / edge 数を確認
+- `graph:doctor`: DB と resolver が最低限成立しているか診断
+- `graph:smoke`: registry build -> graph rebuild -> resolver -> doctor を通し確認
+- `graph:install-hooks`: `post-commit` / `post-merge` に auto-reindex hook を入れる
 
 ## Local Integrations
 

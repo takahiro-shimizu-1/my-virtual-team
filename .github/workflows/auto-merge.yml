@@ -1,0 +1,62 @@
+name: auto-merge
+
+on:
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'approved') ||
+      (github.event_name == 'check_suite' && github.event.check_suite.conclusion == 'success')
+    steps:
+      - name: Resolve PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request_review" ]; then
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PR_NUMBER=$(gh pr list --repo ${{ github.repository }} --json number,headRefName --jq ".[] | select(.headRefName == \"${{ github.event.check_suite.head_branch }}\") | .number" | head -n1)
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Merge eligible PR
+        if: steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER=${{ steps.pr.outputs.number }}
+          PR_DATA=$(gh pr view "$PR_NUMBER" --repo ${{ github.repository }} --json state,isDraft,mergeable,reviewDecision,labels,author)
+
+          STATE=$(echo "$PR_DATA" | python3 -c "import json,sys; print(json.load(sys.stdin)['state'])")
+          DRAFT=$(echo "$PR_DATA" | python3 -c "import json,sys; print(str(json.load(sys.stdin)['isDraft']).lower())")
+          MERGEABLE=$(echo "$PR_DATA" | python3 -c "import json,sys; print(json.load(sys.stdin)['mergeable'])")
+          REVIEW=$(echo "$PR_DATA" | python3 -c "import json,sys; print(json.load(sys.stdin).get('reviewDecision') or '')")
+          AUTHOR=$(echo "$PR_DATA" | python3 -c "import json,sys; print(json.load(sys.stdin)['author']['login'])")
+          AUTO_LABEL=$(echo "$PR_DATA" | python3 -c "import json,sys; labels=[l['name'] for l in json.load(sys.stdin).get('labels', [])]; print('true' if 'auto' in labels else 'false')")
+          NEEDS_HUMAN=$(echo "$PR_DATA" | python3 -c "import json,sys; labels=[l['name'] for l in json.load(sys.stdin).get('labels', [])]; print('true' if 'needs-human' in labels else 'false')")
+
+          if [ "$STATE" != "OPEN" ] || [ "$DRAFT" = "true" ] || [ "$MERGEABLE" != "MERGEABLE" ] || [ "$NEEDS_HUMAN" = "true" ]; then
+            exit 0
+          fi
+
+          if ! echo "$AUTHOR" | tr '[:upper:]' '[:lower:]' | grep -q "copilot"; then
+            if [ "$AUTO_LABEL" != "true" ]; then
+              exit 0
+            fi
+          fi
+
+          if [ "$REVIEW" != "APPROVED" ]; then
+            exit 0
+          fi
+
+          gh pr merge "$PR_NUMBER" --repo ${{ github.repository }} --squash --delete-branch

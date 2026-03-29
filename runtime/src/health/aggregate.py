@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+from control.skill_monitor import analyze_skill_health
 from control.task_store import expire_stale_claims
 
 
@@ -11,50 +12,29 @@ def _now_iso() -> str:
 
 
 def _refresh_skill_health_snapshots(conn) -> list[dict]:
-    rows = conn.execute(
-        """
-        SELECT skill_id,
-               COUNT(*) AS total_runs,
-               SUM(CASE WHEN result = 'completed' THEN 1 ELSE 0 END) AS success_count,
-               MAX(created_at) AS last_run_at
-        FROM skill_runs
-        WHERE skill_id != ''
-        GROUP BY skill_id
-        ORDER BY skill_id
-        """
-    ).fetchall()
-
     snapshots = []
-    for row in rows:
-        total_runs = row["total_runs"]
-        success_rate = (row["success_count"] or 0) / total_runs if total_runs else 0.0
-        if total_runs < 3:
-            health_status = "warming"
-        elif success_rate >= 0.8:
-            health_status = "healthy"
-        elif success_rate >= 0.5:
-            health_status = "watch"
-        else:
-            health_status = "degraded"
-
+    for snapshot in analyze_skill_health(conn):
         detail = {
-            "skill_id": row["skill_id"],
-            "total_runs": total_runs,
-            "success_rate": round(success_rate, 3),
-            "last_run_at": row["last_run_at"],
+            "skill_id": snapshot["skill_id"],
+            "total_runs": snapshot["total_runs"],
+            "avg_score": snapshot["avg_score"],
+            "recent_avg": snapshot["recent_avg"],
+            "trend": snapshot["trend"],
+            "flagged": snapshot["flagged"],
+            "reasons": snapshot["reasons"],
+            "consecutive_failures": snapshot["consecutive_failures"],
+            "last_run_at": snapshot["last_run_at"],
         }
         conn.execute(
             """
             INSERT INTO skill_health_snapshots (skill_id, health_status, detail_json, created_at)
             VALUES (?, ?, ?, ?)
             """,
-            (row["skill_id"], health_status, json.dumps(detail, ensure_ascii=False), _now_iso()),
+            (snapshot["skill_id"], snapshot["health_status"], json.dumps(detail, ensure_ascii=False), _now_iso()),
         )
         snapshots.append(
             {
-                "skill_id": row["skill_id"],
-                "health_status": health_status,
-                **detail,
+                **snapshot,
             }
         )
 
@@ -157,4 +137,3 @@ def build_health_report(conn, sweep_timeouts: bool = False) -> dict:
         "skill_health": snapshots,
         "expired_tasks": expired,
     }
-

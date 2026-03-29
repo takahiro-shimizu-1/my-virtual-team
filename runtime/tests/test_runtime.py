@@ -14,6 +14,7 @@ if str(SRC_ROOT) not in sys.path:
 from control.runner_bridge import plan_request
 from control.codex_runner import run_codex_task
 from control.router import route_request
+from control.skill_monitor import analyze_skill_health, enqueue_improvement_tasks
 from control.task_store import complete_task, create_task, dispatch_ready_tasks, resolve_task_approval
 from db.connection import connect_db
 from db.migrate import apply_migrations
@@ -162,6 +163,31 @@ class RuntimeFlowTests(unittest.TestCase):
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["changed_paths"], ["README.md"])
         self.assertEqual(result["task"]["outputs"][0]["path"], "README.md")
+
+    def test_skill_monitor_flags_degraded_skill_and_enqueues_task(self) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO skill_runs (task_id, agent_id, skill_id, result, score, created_at)
+            VALUES
+              ('t1', 'kirishima-ren', 'api-design-review', 'completed', 0.9, '2026-03-20T00:00:00+00:00'),
+              ('t2', 'kirishima-ren', 'api-design-review', 'failed', 0.0, '2026-03-21T00:00:00+00:00'),
+              ('t3', 'kirishima-ren', 'api-design-review', 'failed', 0.0, '2026-03-22T00:00:00+00:00'),
+              ('t4', 'kirishima-ren', 'api-design-review', 'failed', 0.0, '2026-03-23T00:00:00+00:00')
+            """
+        )
+        self.conn.commit()
+
+        skills = analyze_skill_health(self.conn, recent_days=30)
+        api_review = next(item for item in skills if item["skill_id"] == "api-design-review")
+        self.assertTrue(api_review["flagged"])
+        self.assertEqual(api_review["trend"], "broken")
+
+        result = enqueue_improvement_tasks(self.conn, recent_days=30, dry_run=False)
+        self.assertEqual(result["flagged"], 1)
+        created = next(item for item in result["tasks"] if item["status"] == "created")
+        task = self.conn.execute("SELECT title, source FROM tasks WHERE task_id = ?", (created["task_id"],)).fetchone()
+        self.assertEqual(task["source"], "self-improve")
+        self.assertIn("api-design-review", task["title"])
 
 
 if __name__ == "__main__":

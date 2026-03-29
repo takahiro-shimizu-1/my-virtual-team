@@ -1,0 +1,41 @@
+name: copilot-assign
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  assign-copilot:
+    runs-on: ubuntu-latest
+    if: github.event.label.name == 'copilot' || github.event.label.name == 'auto'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Assign GitHub Copilot
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            gh issue comment ${{ github.event.issue.number }} \
+              --repo ${{ github.repository }} \
+              --body "⚠️ Copilot assignment skipped: \`COPILOT_PAT\` secret is not configured."
+            exit 0
+          fi
+
+          ./scripts/github-issue.sh github-issue-assign \
+            --issue-number ${{ github.event.issue.number }} \
+            --assignee copilot-swe-agent \
+            --repo ${{ github.repository }}
+
+      - name: Comment assignment confirmation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --body "GitHub Copilot has been assigned to this issue."

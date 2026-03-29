@@ -1,0 +1,43 @@
+name: copilot-watchdog
+
+on:
+  workflow_run:
+    workflows: ["validate", "claude-review"]
+    types: [completed]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  rerun-blocked:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rerun action_required workflows on copilot branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          rerun_if_needed() {
+            local run_id="$1"
+            local branch="$2"
+            local conclusion="$3"
+            if [ "$conclusion" = "action_required" ] && echo "$branch" | grep -q "^copilot/"; then
+              gh run rerun "$run_id" --repo "${{ github.repository }}" || true
+            fi
+          }
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            rerun_if_needed "${{ github.event.workflow_run.id }}" "${{ github.event.workflow_run.head_branch }}" "${{ github.event.workflow_run.conclusion }}"
+            exit 0
+          fi
+
+          gh run list --repo "${{ github.repository }}" --limit 30 --json databaseId,conclusion,headBranch,workflowName | \
+            python3 -c "import json,sys; data=json.load(sys.stdin); [print(f\"{item['databaseId']} {item.get('headBranch','')} {item.get('conclusion','')}\") for item in data if item.get('conclusion') == 'action_required' and (item.get('headBranch') or '').startswith('copilot/')]" | \
+            while read -r run_id branch conclusion; do
+              [ -n "$run_id" ] || continue
+              gh run rerun "$run_id" --repo "${{ github.repository }}" || true
+            done

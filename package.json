@@ -11,7 +11,12 @@
     "ci:verify": "bash scripts/ci-verify.sh",
     "registry:build": "node scripts/build-registry.js",
     "graph:build": "bash scripts/rebuild-agent-graph.sh",
+    "graph:status": "python3 runtime/src/gitnexus/agent_graph_builder.py status . --json",
+    "graph:list": "python3 runtime/src/gitnexus/agent_graph_builder.py list . --json",
     "graph:context": "bash scripts/resolve-agent-context.sh",
+    "graph:doctor": "bash scripts/gitnexus-doctor.sh",
+    "graph:smoke": "bash scripts/gitnexus-smoke-test.sh",
+    "graph:install-hooks": "bash scripts/gitnexus-install-hooks.sh",
     "runtime:migrate": "python3 runtime/src/cli/migrate.py",
     "runtime:task": "bash scripts/runtime-task.sh",
     "runtime:events": "python3 runtime/src/cli/events.py publish",
@@ -19,6 +24,8 @@
     "runtime:github-bridge": "python3 scripts/github-event-bridge.py",
     "runtime:watch": "python3 runtime/src/cli/watch.py scan",
     "runtime:integrations": "python3 runtime/src/cli/integrations.py",
+    "runtime:skill-analyze": "python3 runtime/src/cli/skill_improve.py analyze",
+    "runtime:self-improve": "python3 runtime/src/cli/skill_improve.py enqueue",
     "runtime:test": "python3 -m unittest discover -s runtime/tests -p 'test_*.py'",
     "validate:v4": "python3 scripts/validate-v4-team.py"
   }
