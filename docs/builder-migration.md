@@ -38,8 +38,10 @@
 npm run registry:build
 npm run graph:build
 npm run runtime:migrate
+npm run runtime:test
 npm run runtime:watch
 npm run runtime:health
+npm run validate:v4
 ```
 
 ## builder の変更点
@@ -57,3 +59,4 @@ npm run runtime:health
 - SQLite durable store
 - event-driven integrations
 - watcher / health / graph freshness まで含めて完成
+- `validate:v4` で構成検証できる

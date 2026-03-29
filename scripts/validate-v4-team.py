@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+REQUIRED_PATHS = [
+    ".gitignore",
+    "package.json",
+    "package-lock.json",
+    "CLAUDE.md",
+    "CLAUDE.md.builder",
+    ".gitnexus/workspace.json",
+    "outputs/.gitkeep",
+    "logs/.gitkeep",
+    "docs/architecture.md",
+    "docs/runbook.md",
+    "docs/schema.md",
+    "docs/builder-migration.md",
+    "docs/v4-todo.md",
+    "registry/agents.generated.json",
+    "registry/context-policy.generated.json",
+    "registry/skills.generated.json",
+    "runtime/migrations/001_initial.sql",
+    "runtime/migrations/002_phase3_phase4.sql",
+    "runtime/src/control/router.py",
+    "runtime/src/control/decomposer.py",
+    "runtime/src/control/runner_bridge.py",
+    "runtime/src/events/bus.py",
+    "runtime/src/health/aggregate.py",
+    "runtime/src/watchers/local_files.py",
+    "runtime/tests/test_runtime.py",
+]
+
+REQUIRED_AGENT_KEYS = [
+    "agent_id",
+    "department",
+    "keywords",
+    "context_refs",
+    "context_budget",
+    "approval_policy",
+    "execution_mode",
+]
+
+ACTIVE_DOCS = [
+    "CLAUDE.md",
+    "CLAUDE.md.builder",
+    ".claude/commands/strategy.md",
+    ".claude/commands/development.md",
+    ".claude/commands/marketing.md",
+    ".claude/commands/research.md",
+    ".claude/commands/admin.md",
+    ".claude/rules/agent-launch.md",
+]
+
+BANNED_PATTERNS = [
+    "Agent toolでサブエージェントとして起動してください",
+    "必ずAgent toolでサブエージェントを起動し",
+    "jq \". += [",
+]
+
+
+def parse_frontmatter(text: str) -> dict:
+    if not text.startswith("---\n"):
+        return {}
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        return {}
+    block = text[4:end]
+    data: dict[str, object] = {}
+    current_key = ""
+    current_map: dict[str, object] | None = None
+    for raw_line in block.splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            continue
+        if not line.startswith("  "):
+            key, _, raw_value = line.partition(":")
+            key = key.strip()
+            raw_value = raw_value.strip()
+            if raw_value:
+                data[key] = raw_value
+                current_key = ""
+                current_map = None
+            else:
+                data[key] = {}
+                current_key = key
+                current_map = data[key]  # type: ignore[assignment]
+            continue
+        if current_key and current_map is not None:
+            subkey, _, raw_value = line.strip().partition(":")
+            current_map[subkey.strip()] = raw_value.strip()
+    return data
+
+
+def check_required_paths(errors: list[str]) -> None:
+    for relative in REQUIRED_PATHS:
+        if not (ROOT / relative).exists():
+            errors.append(f"missing required path: {relative}")
+
+
+def check_agents(errors: list[str]) -> None:
+    for path in sorted((ROOT / "agents").rglob("*.md")):
+        frontmatter = parse_frontmatter(path.read_text(encoding="utf-8"))
+        if not frontmatter:
+            errors.append(f"agent frontmatter missing: {path.relative_to(ROOT)}")
+            continue
+        for key in REQUIRED_AGENT_KEYS:
+            if key not in frontmatter:
+                errors.append(f"agent frontmatter key missing: {path.relative_to(ROOT)} -> {key}")
+
+
+def check_registries(errors: list[str]) -> None:
+    for relative, key in [
+        ("registry/agents.generated.json", "agents"),
+        ("registry/context-policy.generated.json", "agents"),
+        ("registry/skills.generated.json", "skills"),
+    ]:
+        data = json.loads((ROOT / relative).read_text(encoding="utf-8"))
+        if key not in data:
+            errors.append(f"registry missing key: {relative} -> {key}")
+
+
+def check_active_docs(errors: list[str]) -> None:
+    for relative in ACTIVE_DOCS:
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        for pattern in BANNED_PATTERNS:
+            if pattern in text:
+                errors.append(f"banned legacy pattern found in {relative}: {pattern}")
+
+
+def check_pycache(errors: list[str]) -> None:
+    tracked = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    for path in tracked:
+        if "__pycache__" in path or path.endswith(".pyc"):
+            errors.append(f"tracked cache artifact found: {path}")
+
+
+def main() -> int:
+    errors: list[str] = []
+    check_required_paths(errors)
+    check_agents(errors)
+    check_registries(errors)
+    check_active_docs(errors)
+    check_pycache(errors)
+
+    payload = {
+        "status": "ok" if not errors else "error",
+        "errors": errors,
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0 if not errors else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

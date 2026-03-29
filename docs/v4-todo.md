@@ -55,6 +55,7 @@
 - [x] `docs/builder-migration.md` を追加
 - [x] `CLAUDE.md.builder` に v4 出力契約を追記
 - [x] 新規生成に必要な出力物一覧を builder へ明記
+- [x] `validate:v4` を追加し builder 完了条件を executable にした
 
 ## Validation
 
@@ -67,3 +68,4 @@
 - [x] `runtime:watch`
 - [x] `runtime:health`
 - [x] `runtime:events`
+- [x] `validate:v4`

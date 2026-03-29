@@ -6,6 +6,7 @@
 npm run registry:build
 npm run graph:build
 npm run runtime:migrate
+npm run validate:v4
 ```
 
 期待結果:
@@ -16,6 +17,7 @@ npm run runtime:migrate
 - `AGENTS_CLAUDE.md`
 - `.gitnexus/knowledge/`
 - `.runtime/state.db`
+- v4 構成 validation が `ok`
 
 ## Chief の基本操作
 
@@ -64,6 +66,7 @@ npm run runtime:task -- sweep
 npm run runtime:events
 npm run runtime:health
 npm run runtime:watch
+npm run validate:v4
 ```
 
 意味:
@@ -71,6 +74,7 @@ npm run runtime:watch
 - `runtime:events`: `task.completed` などを activity log / Slack / Notion へ fan-out
 - `runtime:health`: queue / lock / recent failures / notifications / skill health を集計
 - `runtime:watch`: `agents/`, `guidelines/`, `templates/`, `.claude/rules/` の差分を `knowledge_diffs` へ記録
+- `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 
 ## stale graph 対処
 

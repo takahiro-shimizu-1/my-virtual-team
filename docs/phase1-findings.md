@@ -36,9 +36,9 @@
   - `api-design-review`, `security-policy`, `output-standards` まで返る
 - repo-local wrapper は既定で `--depth 1` を使い、共通 guideline 経由の 2-hop ノイズを抑えている
 
-## 次にやるべきこと
+## 後続フェーズで反映済み
 
-- `registry/skills.generated.json` を追加し、skill metadata を明示化する
-- generated skill を build step に統合し、手編集を減らす
-- query ごとの `task_type` マッピングを chief 側に持たせる
-- `gni` ラッパー側の壊れ方を吸収する正式な repo-local CLI を整える
+- `registry/skills.generated.json` を追加し、skill metadata を明示化した
+- generated skill は build step に統合済み
+- chief 側は `route / plan / start` で workflow を切る構成に更新済み
+- repo-local CLI と graph rebuild flow を正式運用にした
