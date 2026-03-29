@@ -5,6 +5,7 @@ on:
     types: [labeled]
 
 permissions:
+  actions: write
   contents: read
   issues: write
 
@@ -53,3 +54,11 @@ jobs:
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
             --body "$BODY"
+
+      - name: Nudge native agent watchdog sweep
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 90
+          gh workflow run native-agent-watchdog.yml --repo "${{ github.repository }}" || true

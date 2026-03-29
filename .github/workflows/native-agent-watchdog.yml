@@ -5,11 +5,14 @@ on:
     workflows: ["validate", "native-agent-review"]
     types: [completed]
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
   actions: write
+  contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   rerun-blocked:
@@ -44,4 +47,38 @@ jobs:
             while read -r run_id branch conclusion; do
               [ -n "$run_id" ] || continue
               gh run rerun "$run_id" --repo "${{ github.repository }}" || true
+            done
+
+  dispatch-agent-pr-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch verification for open native agent PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh pr list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --json number,headRefName,headRefOid \
+            --limit 30 | \
+            python3 -c "import json,sys,re; data=json.load(sys.stdin); pattern=re.compile(r'^(copilot|claude|codex-agent|codex)/'); [print(f\"{item['number']} {item['headRefName']} {item['headRefOid']}\") for item in data if pattern.match(item.get('headRefName') or '')]" | \
+            while read -r pr_number head_branch head_sha; do
+              [ -n "${pr_number:-}" ] || continue
+
+              existing=$(gh api \
+                -H "Accept: application/vnd.github+json" \
+                repos/${{ github.repository }}/commits/${head_sha}/check-runs \
+                --jq '[.check_runs[] | select(.name == "agent-pr-verify") | .status + ":" + (.conclusion // "")] | join(",")')
+
+              if echo "$existing" | grep -Eq 'in_progress|queued|completed:success'; then
+                continue
+              fi
+
+              gh workflow run agent-pr-verify.yml \
+                --repo "${{ github.repository }}" \
+                -f pr_number="$pr_number" \
+                -f head_branch="$head_branch" \
+                -f head_sha="$head_sha"
             done

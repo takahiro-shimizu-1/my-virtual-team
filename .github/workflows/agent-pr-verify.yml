@@ -1,9 +1,20 @@
 name: agent-pr-verify
 
 on:
-  workflow_run:
-    workflows: ["Copilot coding agent"]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Open PR number to verify"
+        required: true
+        type: string
+      head_branch:
+        description: "Optional PR head branch override"
+        required: false
+        type: string
+      head_sha:
+        description: "Optional PR head sha override"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -13,33 +24,38 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
     env:
       GH_TOKEN: ${{ github.token }}
-      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
     steps:
       - name: Resolve PR and head SHA
         id: pr
         run: |
+          PR_NUMBER="${{ inputs.pr_number }}"
+          HEAD_BRANCH="${{ inputs.head_branch }}"
+          HEAD_SHA="${{ inputs.head_sha }}"
+
+          PR_JSON=$(gh pr view "$PR_NUMBER" \
+            --repo "${{ github.repository }}" \
+            --json number,headRefName,headRefOid,state)
+
+          PR_STATE=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["state"])')
+          if [ "$PR_STATE" != "OPEN" ]; then
+            exit 0
+          fi
+
+          if [ -z "$HEAD_BRANCH" ]; then
+            HEAD_BRANCH=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["headRefName"])')
+          fi
+          if [ -z "$HEAD_SHA" ]; then
+            HEAD_SHA=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["headRefOid"])')
+          fi
+
           if ! echo "${HEAD_BRANCH}" | grep -Eq '^(copilot|claude|codex-agent|codex)/'; then
             exit 0
           fi
 
-          PR_JSON=$(gh pr list \
-            --repo "${{ github.repository }}" \
-            --state open \
-            --head "${HEAD_BRANCH}" \
-            --json number,headRefOid \
-            --jq '.[0]')
-
-          if [ -z "$PR_JSON" ] || [ "$PR_JSON" = "null" ]; then
-            exit 0
-          fi
-
-          PR_NUMBER=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["number"])')
-          HEAD_SHA=$(echo "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["headRefOid"])')
-
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Create check run

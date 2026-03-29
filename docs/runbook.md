@@ -159,7 +159,7 @@ native agent defaults:
 定期運用 workflow:
 
 - `.github/workflows/agent-pr-verify.yml`
-  `Copilot coding agent` 完了後に PR head を default-branch 文脈で検証する
+  watchdog から explicit dispatch され、open な native agent PR head を default-branch 文脈で検証する
 - `.github/workflows/runtime-maintenance.yml`
   30 分ごとに watcher / self-improve / health snapshot を実行して artifact を残す
 - `.github/workflows/gitnexus-weekly.yml`
@@ -198,6 +198,7 @@ npm run graph:install-hooks
 GitHub Actions 側では次も動く:
 
 - `agent-pr-verify.yml`: managed AI PR を `ci:verify` で検証する
+- `native-agent-watchdog.yml`: open な native agent PR に `agent-pr-verify` を自動 dispatch する
 - `gitnexus-impact.yml`: PR changed files から impact comment を更新
 - `gitnexus-reindex.yml`: `master` push 後に graph を再構築
 - `gitnexus-weekly.yml`: weekly full reindex

@@ -30,9 +30,9 @@ Smoke tests は以下を確認する。
 
 ### `agent-pr-verify` (`.github/workflows/agent-pr-verify.yml`)
 
-- **トリガー**: GitHub native coding agent run の `workflow_run.completed`
+- **トリガー**: `native-agent-watchdog` からの `workflow_dispatch`
 - **役割**: AI agent が作った PR head を default-branch 文脈で checkout し、`npm run ci:verify` を実行する
-- **期待結果**: `action_required` になりやすい bot branch push の代わりに、deterministic な PR verification が走る
+- **期待結果**: `workflow_run` approval policy に引っ張られず、deterministic な PR verification が走る
 
 ### `github-ops` (`.github/workflows/github-ops.yml`)
 
