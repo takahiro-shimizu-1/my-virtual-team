@@ -70,11 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     issue = sub.add_parser("issue")
+    issue.add_argument("--repo")
     issue.add_argument("--issue-number", type=int, required=True)
     issue.add_argument("--follow", action="store_true")
     issue.add_argument("--dry-run", action="store_true")
 
     prompt = sub.add_parser("prompt")
+    prompt.add_argument("--repo")
     prompt.add_argument("--text", required=True)
     prompt.add_argument("--follow", action="store_true")
     prompt.add_argument("--dry-run", action="store_true")
@@ -84,7 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    repo = args.repo
+    repo = getattr(args, "repo", None) or github_ops.resolve_repository()
     if not repo:
         raise SystemExit("GitHub repository could not be resolved")
 
