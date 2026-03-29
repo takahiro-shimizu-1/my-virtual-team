@@ -1,27 +1,32 @@
 # サブエージェント起動ルール
 
-チーフがサブエージェントを起動する際、以下のテンプレートに従う。
+chief は task を直接投げず、先に control plane に登録する。
+
+## 基本手順
+
+1. `runtime:task route` で owner / collaborator / required_context を決める
+2. `runtime:task start` または `runtime:task plan --dispatch` で task を登録する
+3. runner が claim したら、対象 agent の定義ファイルと required_context だけを読む
+4. 完了時は `complete` / `fail` で state を閉じる
 
 ## 起動テンプレート
 
-Agent tool:
-  description: "{エージェント名} - {タスク概要}"
-  prompt: |
-    あなたは shimizu の{エージェント名}です。
-
-    ## あなたの定義
-    以下のファイルを読み、あなたの役割・人格・専門領域を把握してください:
-    - `{エージェントファイルパス}` （あなたの定義）
-    - 定義ファイル内の「参照guidelines」に記載されたguidelinesも必ず読むこと
-
-    ## タスク
-    指示: 「{指示内容}」
-
-    ## 出力ルール
-    - あなたの定義ファイルの「アウトプット形式」に従って出力すること
-    - 該当するテンプレートがあれば templates/ から読み込んで使用すること
-    - 判断に迷う場合は「確認が必要」と明記すること
+```text
+runner:
+  agent_file: {agents/...}
+  required_context:
+    - frontmatter.context_refs.always
+    - route.required_context
+  never_read:
+    - frontmatter.context_refs.never
+  output:
+    - reusable artifact -> outputs/
+    - phase handoff -> outputs/handoff-*.json
+```
 
 ## ポイント
-- guidelines の参照先はエージェント定義ファイル（agents/）に記載されている。起動時に二重指定しない
-- エージェント名とファイルパスは、各部門ルーター（.claude/commands/）のエ���ジェント一覧テーブルを参照する
+
+- task registration をバイパスしない
+- frontmatter が metadata の SSOT
+- generated registry は lookup 補助
+- full context を毎回読まず、required_context を優先する

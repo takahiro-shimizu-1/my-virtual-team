@@ -1,0 +1,9 @@
+node_modules/
+__pycache__/
+*.pyc
+.runtime/
+.gitnexus/agent-graph.db
+.gitnexus/knowledge/
+logs/activity-log.json
+outputs/tmp/
+dist/

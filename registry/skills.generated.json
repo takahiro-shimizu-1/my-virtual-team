@@ -1,0 +1,144 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-03-29T10:44:29.002Z",
+  "skills": [
+    {
+      "name": "api-design-review",
+      "description": "API設計レビュー、技術レビュー、バックエンド設計のための context pack",
+      "category": "infra",
+      "file": ".claude/skills/generated/api-design-review.md",
+      "keywords": [
+        "API設計",
+        "APIレビュー",
+        "API設計レビュー",
+        "REST API",
+        "GraphQL",
+        "バックエンド設計",
+        "DB設計",
+        "セキュリティレビュー"
+      ],
+      "agents": [
+        "kirishima-ren",
+        "kujo-haru"
+      ],
+      "depends_on": [
+        "guidelines/company-overview.md",
+        "guidelines/output-standards.md",
+        "guidelines/security-policy.md"
+      ]
+    },
+    {
+      "name": "backoffice-ops",
+      "description": "請求、経費、契約、申告準備のための context pack",
+      "category": "business",
+      "file": ".claude/skills/generated/backoffice-ops.md",
+      "keywords": [
+        "請求書",
+        "経費管理",
+        "契約書",
+        "freee",
+        "確定申告"
+      ],
+      "agents": [
+        "komiya-sakura"
+      ],
+      "depends_on": [
+        "guidelines/company-overview.md",
+        "guidelines/output-standards.md",
+        "guidelines/security-policy.md",
+        "guidelines/escalation-rules.md"
+      ]
+    },
+    {
+      "name": "proposal-strategy",
+      "description": "提案書、事業戦略、AI活用提案のための context pack",
+      "category": "business",
+      "file": ".claude/skills/generated/proposal-strategy.md",
+      "keywords": [
+        "提案書",
+        "事業戦略",
+        "成長戦略",
+        "AI活用提案",
+        "ROI試算",
+        "見積もり"
+      ],
+      "agents": [
+        "tsurumin-seiichi",
+        "horie-ryo"
+      ],
+      "depends_on": [
+        "guidelines/company-overview.md",
+        "guidelines/output-standards.md",
+        "guidelines/brand-guidelines.md",
+        "guidelines/philosophy.md"
+      ]
+    },
+    {
+      "name": "requirements-definition",
+      "description": "要件定義、ヒアリング、業務フロー整理のための context pack",
+      "category": "business",
+      "file": ".claude/skills/generated/requirements-definition.md",
+      "keywords": [
+        "要件定義",
+        "ヒアリング",
+        "ユーザーストーリー",
+        "業務フロー",
+        "非機能要件"
+      ],
+      "agents": [
+        "mizuno-akari"
+      ],
+      "depends_on": [
+        "guidelines/company-overview.md",
+        "guidelines/output-standards.md",
+        "guidelines/brand-guidelines.md"
+      ]
+    },
+    {
+      "name": "trend-research",
+      "description": "技術調査、論文要約、競合分析のための context pack",
+      "category": "business",
+      "file": ".claude/skills/generated/trend-research.md",
+      "keywords": [
+        "技術調査",
+        "論文要約",
+        "ツール比較",
+        "競合分析",
+        "トレンド調査"
+      ],
+      "agents": [
+        "todo-rito"
+      ],
+      "depends_on": [
+        "guidelines/company-overview.md",
+        "guidelines/output-standards.md",
+        "guidelines/security-policy.md"
+      ]
+    },
+    {
+      "name": "x-post-context",
+      "description": "X投稿、スレッド、SNS運用のための context pack",
+      "category": "content",
+      "file": ".claude/skills/generated/x-post-context.md",
+      "keywords": [
+        "X投稿",
+        "SNS投稿",
+        "X運用",
+        "スレッド",
+        "投稿文",
+        "エンゲージメント"
+      ],
+      "agents": [
+        "asahina-yu"
+      ],
+      "depends_on": [
+        "guidelines/company-overview.md",
+        "guidelines/brand-guidelines.md",
+        "guidelines/output-standards.md",
+        "guidelines/philosophy.md",
+        "guidelines/top-posts-summary.md",
+        "guidelines/top-posts-top20.md"
+      ]
+    }
+  ]
+}

@@ -1,41 +1,24 @@
 # 開発部
 
-あなたはチーフとして、開発部のエージェントに作業を委任します。
-代表からの指示内容に基づき、以下のエージェント一覧から最適な担当を選び、
-Agent toolでサブエージェントとして起動してください。
+開発系の依頼は `/development` で受け、routing 結果に応じて fast path か DAG へ登録する。
 
-## エージェント一覧
+## 担当
 
 | キーワード・意図 | 担当 | ファイル |
 |---|---|---|
-| Web開発、フロント、バックエンド、API、DB、インフラ、GCP | 桐島 蓮 | `agents/02-development/kirishima-ren.md` |
-| AI開発、LLM、プロンプト、エージェント、RAG、AI設計 | 九条 ハル | `agents/02-development/kujo-haru.md` |
+| Web開発、バックエンド、API、DB、インフラ | 桐島 蓮 | `agents/02-development/kirishima-ren.md` |
+| AI開発、LLM、RAG、プロンプト、エージェント設計 | 九条 ハル | `agents/02-development/kujo-haru.md` |
 
-## サブエージェント起動テンプレート
+## 実行手順
 
-Agent tool:
-  description: "{エージェント名} - {タスク概要}"
-  prompt: |
-    あなたは shimizu の{エージェント名}です。
-
-    ## あなたの定義
-    以下のファイルを読み、あなたの役割・人格・専門領域を把握してください:
-    - `{エージェントファイルパス}`（あなたの定義）
-    - 定義ファイル内の「参照guidelines」に記載されたguidelinesも必ず読むこと
-
-    ## タスク
-    指示: 「{指示内容}」
-
-    ## 出力ルール
-    - あなたの定義ファイルの「アウトプット形式」に従って出力すること
-    - 該当するテンプレートがあれば templates/ から読み込んで使用すること
-    - 判断に迷う場合は「確認が必要」と明記すること
-
-## 複数エージェント起動の例
-- 「AIチャットボットのWebアプリを作って」→ 九条 ハル（AI設計）+ 桐島 蓮（Web実装）を並列起動
-- 「APIのエンドポイントを設計して実装して」→ 桐島 蓮 を起動
+1. `npm run runtime:task -- route --command development --prompt "$ARGUMENTS"`
+2. 単発実装なら `npm run runtime:task -- start --command development --prompt "$ARGUMENTS" --runner chief`
+3. AI設計→実装、API設計→レビューのような複数工程は `plan --dispatch`
+4. 実装完了後は `outputs/` に成果物、必要なら handoff JSON を残す
 
 ## 評価ゲート
-- コード成果物 → 生成: 担当エージェント → 評価: もう一方のエンジニア（コードレビュー）
+
+- API設計レビュー: 桐島 蓮 ↔ 九条 ハル の相互レビュー
+- 主要アーキテクチャ変更: chief approval
 
 $ARGUMENTS

@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from control.runner_bridge import plan_request
+from control.router import route_request
+from control.task_store import complete_task, create_task, dispatch_ready_tasks, resolve_task_approval
+from db.connection import connect_db
+from db.migrate import apply_migrations
+from events.bus import publish_pending_events
+from health.aggregate import build_health_report
+from watchers.local_files import scan_local_assets
+
+
+class RuntimeFlowTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.db_path = Path(self.tmpdir.name) / "state.db"
+        self.conn = connect_db(self.db_path)
+        apply_migrations(self.conn)
+
+    def tearDown(self) -> None:
+        self.conn.close()
+        self.tmpdir.cleanup()
+
+    def test_route_resolves_api_review_skill(self) -> None:
+        route = route_request("API設計レビューをお願いします", "development")
+        self.assertEqual(route["matched_skill"]["name"], "api-design-review")
+        self.assertIn(route["owner"]["agent_id"], {"kirishima-ren", "kujo-haru"})
+
+    def test_plan_request_builds_sequential_workflow(self) -> None:
+        planned = plan_request(
+            self.conn,
+            prompt="提案をまとめて、その後要件も整理して",
+            command="strategy",
+        )
+        self.assertEqual(planned["workflow_name"], "proposal-to-requirements")
+        self.assertEqual(len(planned["created_tasks"]), 2)
+        first_task = planned["created_tasks"][0]
+        second_task = planned["created_tasks"][1]
+        self.assertEqual(second_task["dependencies"], [first_task["task_id"]])
+
+    def test_approval_blocks_dispatch_until_resolved(self) -> None:
+        task = create_task(
+            self.conn,
+            title="公開前レビュー",
+            agent_id="asahina-yu",
+            approval_required=True,
+            approval_note="公開コンテンツのため",
+        )
+        self.assertEqual(dispatch_ready_tasks(self.conn), [])
+        resolved = resolve_task_approval(self.conn, task["task_id"], "approved", note="chief ok")
+        self.assertEqual(resolved["approvals"][-1]["decision"], "approved")
+        dispatched = dispatch_ready_tasks(self.conn)
+        self.assertEqual(dispatched[0]["task_id"], task["task_id"])
+
+    def test_event_bus_creates_notifications_and_activity_log(self) -> None:
+        task = create_task(
+            self.conn,
+            title="API設計レビュー",
+            agent_id="kirishima-ren",
+            payload={"skill_id": "api-design-review"},
+        )
+        dispatch_ready_tasks(self.conn)
+        self.conn.execute(
+            "UPDATE tasks SET status = 'claimed', current_attempt = 1, claimed_by = 'tester' WHERE task_id = ?",
+            (task["task_id"],),
+        )
+        self.conn.execute(
+            """
+            INSERT INTO task_attempts (task_id, attempt_no, runner_id, status, started_at)
+            VALUES (?, 1, 'tester', 'running', datetime('now'))
+            """,
+            (task["task_id"],),
+        )
+        self.conn.commit()
+        complete_task(self.conn, task["task_id"], ["outputs/test.md"])
+        result = publish_pending_events(self.conn, limit=20)
+        self.assertGreaterEqual(result["count"], 1)
+        notification_count = self.conn.execute("SELECT COUNT(*) AS count FROM notifications").fetchone()["count"]
+        self.assertGreaterEqual(notification_count, 1)
+
+    def test_watcher_and_health_report(self) -> None:
+        watch_root = Path(self.tmpdir.name) / "watched"
+        watch_root.mkdir(parents=True, exist_ok=True)
+        watched_file = watch_root / "note.md"
+        watched_file.write_text("# test\n", encoding="utf-8")
+
+        first_scan = scan_local_assets(self.conn, roots=[str(watch_root)])
+        second_scan = scan_local_assets(self.conn, roots=[str(watch_root)])
+        self.assertEqual(first_scan["changes"][0]["diff_type"], "created")
+        self.assertEqual(second_scan["changes"], [])
+
+        report = build_health_report(self.conn)
+        self.assertIn("status_counts", report)
+        self.assertIn("knowledge_diffs", report)
+
+
+if __name__ == "__main__":
+    unittest.main()

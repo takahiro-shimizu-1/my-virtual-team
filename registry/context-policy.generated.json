@@ -1,0 +1,180 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-03-29T10:44:29.002Z",
+  "guidelines": {
+    "company-overview": {
+      "path": "guidelines/company-overview.md",
+      "tokens": 378
+    },
+    "output-standards": {
+      "path": "guidelines/output-standards.md",
+      "tokens": 340
+    },
+    "brand-guidelines": {
+      "path": "guidelines/brand-guidelines.md",
+      "tokens": 447
+    },
+    "philosophy": {
+      "path": "guidelines/philosophy.md",
+      "tokens": 1606
+    },
+    "security-policy": {
+      "path": "guidelines/security-policy.md",
+      "tokens": 363
+    },
+    "escalation-rules": {
+      "path": "guidelines/escalation-rules.md",
+      "tokens": 332
+    },
+    "top-posts-summary": {
+      "path": "guidelines/top-posts-summary.md",
+      "tokens": 361
+    },
+    "top-posts-top20": {
+      "path": "guidelines/top-posts-top20.md",
+      "tokens": 2677
+    },
+    "top-posts-reference": {
+      "path": "guidelines/top-posts-reference.md",
+      "tokens": 13985
+    }
+  },
+  "agents": {
+    "horie-ryo": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "brand-guidelines",
+        "philosophy"
+      ],
+      "never": [
+        "security-policy",
+        "escalation-rules",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    },
+    "mizuno-akari": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "brand-guidelines"
+      ],
+      "never": [
+        "security-policy",
+        "escalation-rules",
+        "philosophy",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    },
+    "tsurumin-seiichi": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "brand-guidelines",
+        "philosophy"
+      ],
+      "never": [
+        "security-policy",
+        "escalation-rules",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    },
+    "kirishima-ren": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "security-policy"
+      ],
+      "never": [
+        "brand-guidelines",
+        "escalation-rules",
+        "philosophy",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    },
+    "kujo-haru": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "security-policy"
+      ],
+      "never": [
+        "brand-guidelines",
+        "escalation-rules",
+        "philosophy",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    },
+    "asahina-yu": {
+      "always": [
+        "company-overview",
+        "output-standards",
+        "brand-guidelines"
+      ],
+      "on_demand": [
+        "philosophy",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ],
+      "never": [
+        "security-policy",
+        "escalation-rules"
+      ]
+    },
+    "todo-rito": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "security-policy"
+      ],
+      "never": [
+        "brand-guidelines",
+        "escalation-rules",
+        "philosophy",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    },
+    "komiya-sakura": {
+      "always": [
+        "company-overview",
+        "output-standards"
+      ],
+      "on_demand": [
+        "security-policy",
+        "escalation-rules"
+      ],
+      "never": [
+        "brand-guidelines",
+        "philosophy",
+        "top-posts-summary",
+        "top-posts-top20",
+        "top-posts-reference"
+      ]
+    }
+  }
+}

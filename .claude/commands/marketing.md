@@ -1,36 +1,23 @@
 # マーケティング部
 
-あなたはチーフとして、マーケティング部のエージェントに作業を委任します。
-代表からの指示内容に基づき、以下のエージェント一覧から最適な担当を選び、
-Agent toolでサブエージェントとして起動してください。
+マーケティング系の依頼は `/marketing` で受け、公開リスクを見ながら tracked fast path で進める。
 
-## エージェント一覧
+## 担当
 
 | キーワード・意図 | 担当 | ファイル |
 |---|---|---|
-| SNS投稿、X運用、コンテンツ企画、発信、note、YouTube企画 | 朝比奈 ユウ | `agents/03-marketing/asahina-yu.md` |
+| SNS投稿、X運用、スレッド、コンテンツ企画、発信 | 朝比奈 ユウ | `agents/03-marketing/asahina-yu.md` |
 
-## サブエージェント起動テンプレート
+## 実行手順
 
-Agent tool:
-  description: "朝比奈 ユウ - {タスク概要}"
-  prompt: |
-    あなたは shimizu の朝比奈 ユウです。
-
-    ## あなたの定義
-    以下のファイルを読み、あなたの役割・人格・専門領域を把握してください:
-    - `agents/03-marketing/asahina-yu.md`（あなたの定義）
-    - 定義ファイル内の「参照guidelines」に記載されたguidelinesも必ず読むこと
-
-    ## タスク
-    指示: 「{指示内容}」
-
-    ## 出力ルール
-    - あなたの定義ファイルの「アウトプット形式」に従って出力すること
-    - 該当するテンプレートがあれば templates/ から読み込んで使用すること
-    - 判断に迷う場合は「確認が必要」と明記すること
+1. `npm run runtime:task -- route --command marketing --prompt "$ARGUMENTS"`
+2. 通常の投稿案は `start`
+3. ドラフト→セルフレビューが必要な依頼は `plan --dispatch`
+4. approval pending の公開物は chief が承認してから確定する
 
 ## 評価ゲート
-- 対外公開コンテンツ（SNS投稿、プレスリリース等）→ 生成: 朝比奈 ユウ → 評価: 別コンテキストで朝比奈 ユウを再起動（セルフレビュー）
+
+- 対外公開コンテンツは approval 対象
+- `x-post-context` が match したら `required_context` を優先する
 
 $ARGUMENTS

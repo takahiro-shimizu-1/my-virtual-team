@@ -1,0 +1,142 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-03-29T10:44:29.002Z",
+  "agents": [
+    {
+      "agent_id": "asahina-yu",
+      "name": "朝比奈 ユウ（Asahina Yu）",
+      "department": "03-marketing",
+      "department_name": "マーケティング部",
+      "file": "agents/03-marketing/asahina-yu.md",
+      "keywords": [
+        "SNS投稿",
+        "X運用",
+        "コンテンツ企画",
+        "スレッド",
+        "エンゲージメント分析"
+      ],
+      "context_budget": 5000,
+      "approval_policy": "external_brand_risk",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "horie-ryo",
+      "name": "堀江 遼（Horie Ryo）",
+      "department": "01-strategy",
+      "department_name": "戦略・コンサル部",
+      "file": "agents/01-strategy/horie-ryo.md",
+      "keywords": [
+        "提案書",
+        "AI活用コンサル",
+        "ROI試算",
+        "見積もり",
+        "導入ロードマップ"
+      ],
+      "context_budget": 3200,
+      "approval_policy": "estimate_or_schedule_commit",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "kirishima-ren",
+      "name": "桐島 蓮（Kirishima Ren）",
+      "department": "02-development",
+      "department_name": "開発部",
+      "file": "agents/02-development/kirishima-ren.md",
+      "keywords": [
+        "Web開発",
+        "React",
+        "Node.js",
+        "DB設計",
+        "CI/CD"
+      ],
+      "context_budget": 2600,
+      "approval_policy": "major_architecture_change",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "komiya-sakura",
+      "name": "小宮 さくら（Komiya Sakura）",
+      "department": "05-admin",
+      "department_name": "管理部",
+      "file": "agents/05-admin/komiya-sakura.md",
+      "keywords": [
+        "請求書",
+        "経費管理",
+        "freee",
+        "契約書",
+        "期限管理"
+      ],
+      "context_budget": 2800,
+      "approval_policy": "financial_or_legal_decision",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "kujo-haru",
+      "name": "九条 ハル（Kujo Haru）",
+      "department": "02-development",
+      "department_name": "開発部",
+      "file": "agents/02-development/kujo-haru.md",
+      "keywords": [
+        "LLM",
+        "AIエージェント",
+        "RAG",
+        "プロンプト設計",
+        "モデル選定"
+      ],
+      "context_budget": 3000,
+      "approval_policy": "model_change_or_api_cost_impact",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "mizuno-akari",
+      "name": "水野 あかり（Mizuno Akari）",
+      "department": "01-strategy",
+      "department_name": "戦略・コンサル部",
+      "file": "agents/01-strategy/mizuno-akari.md",
+      "keywords": [
+        "要件定義",
+        "ヒアリング",
+        "ユーザーストーリー",
+        "業務フロー",
+        "非機能要件"
+      ],
+      "context_budget": 2800,
+      "approval_policy": "scope_change_or_budget_impact",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "todo-rito",
+      "name": "藤堂 理人（Todo Rito）",
+      "department": "04-research",
+      "department_name": "リサーチ部",
+      "file": "agents/04-research/todo-rito.md",
+      "keywords": [
+        "調査",
+        "論文要約",
+        "ツール比較",
+        "競合分析",
+        "トレンド"
+      ],
+      "context_budget": 3600,
+      "approval_policy": "paid_research_or_sensitive_information",
+      "execution_mode": "tracked_fast_path"
+    },
+    {
+      "agent_id": "tsurumin-seiichi",
+      "name": "鶴見 誠一（Tsurumin Seiichi）",
+      "department": "01-strategy",
+      "department_name": "戦略・コンサル部",
+      "file": "agents/01-strategy/tsurumin-seiichi.md",
+      "keywords": [
+        "事業戦略",
+        "成長戦略",
+        "AGIロードマップ",
+        "ポジショニング",
+        "優先順位付け"
+      ],
+      "context_budget": 3200,
+      "approval_policy": "major_direction_change",
+      "execution_mode": "tracked_fast_path"
+    }
+  ]
+}
