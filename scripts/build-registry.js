@@ -6,6 +6,7 @@ const path = require('path');
 const ROOT = process.cwd();
 const AGENTS_DIR = path.join(ROOT, 'agents');
 const REGISTRY_DIR = path.join(ROOT, 'registry');
+const GENERATED_SKILLS_DIR = path.join(ROOT, '.claude', 'skills', 'generated');
 const AGENTS_COMPAT_FILE = path.join(ROOT, 'AGENTS_CLAUDE.md');
 const GITNEXUS_KNOWLEDGE_DIR = path.join(ROOT, '.gitnexus', 'knowledge');
 const BYTES_PER_TOKEN = 3.7;
@@ -104,9 +105,22 @@ function parseFrontmatter(text) {
       continue;
     }
 
+    const listMatch = line.match(/^  -\s*(.*)$/);
+    if (listMatch && currentObject) {
+      const [, raw] = listMatch;
+      if (!Array.isArray(result[currentObject])) {
+        result[currentObject] = [];
+      }
+      result[currentObject].push(parseValue(raw));
+      continue;
+    }
+
     const nestedMatch = line.match(/^  ([a-z_]+):\s*(.*)$/);
     if (nestedMatch && currentObject) {
       const [, key, raw] = nestedMatch;
+      if (Array.isArray(result[currentObject])) {
+        result[currentObject] = {};
+      }
       result[currentObject][key] = parseValue(raw);
     }
   }
@@ -239,6 +253,7 @@ function build() {
   const agentCompat = [];
   const guidelineMap = {};
   const agentPolicies = {};
+  const generatedSkills = [];
 
   for (const fullPath of agentFiles) {
     const text = fs.readFileSync(fullPath, 'utf8');
@@ -326,6 +341,30 @@ function build() {
     ) + '\n'
   );
 
+  if (fs.existsSync(GENERATED_SKILLS_DIR)) {
+    const skillFiles = walk(GENERATED_SKILLS_DIR);
+    for (const fullPath of skillFiles) {
+      const text = fs.readFileSync(fullPath, 'utf8');
+      const frontmatter = parseFrontmatter(text);
+      if (!frontmatter) continue;
+      generatedSkills.push({
+        name: frontmatter.name || slugFromPath(fullPath),
+        description: frontmatter.description || '',
+        category: frontmatter.category || '',
+        file: path.relative(ROOT, fullPath).replace(/\\/g, '/'),
+        keywords: frontmatter.keywords || [],
+        agents: frontmatter.agents || [],
+        depends_on: frontmatter.depends_on || [],
+      });
+    }
+  }
+
+  generatedSkills.sort((a, b) => a.name.localeCompare(b.name));
+  fs.writeFileSync(
+    path.join(REGISTRY_DIR, 'skills.generated.json'),
+    JSON.stringify({ ...meta, skills: generatedSkills }, null, 2) + '\n'
+  );
+
   agentCompat.sort((a, b) => a.agent_id.localeCompare(b.agent_id));
   fs.writeFileSync(AGENTS_COMPAT_FILE, buildAgentsClaude(agentCompat));
   ensureSymlink(
@@ -345,7 +384,9 @@ function build() {
   mirrorMarkdownDir(path.join(ROOT, 'templates'), path.join(GITNEXUS_KNOWLEDGE_DIR, 'templates'));
   mirrorMarkdownDir(path.join(ROOT, '.claude', 'rules'), path.join(GITNEXUS_KNOWLEDGE_DIR, 'rules'));
 
-  console.log(`Generated registry, AGENTS_CLAUDE, and GitNexus knowledge mirror for ${agents.length} agents.`);
+  console.log(
+    `Generated registry, AGENTS_CLAUDE, and GitNexus knowledge mirror for ${agents.length} agents and ${generatedSkills.length} skills.`
+  );
 }
 
 build();

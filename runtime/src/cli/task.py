@@ -14,10 +14,14 @@ from control.task_store import (
     complete_task,
     create_task,
     dispatch_ready_tasks,
+    expire_stale_claims,
     fail_task,
     get_task,
     heartbeat_task,
+    resolve_task_approval,
 )
+from control.router import route_request
+from control.runner_bridge import plan_request, start_fast_path
 from db.connection import connect_db
 from db.migrate import apply_migrations
 
@@ -45,6 +49,13 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--depends-on", action="append", default=[])
     create.add_argument("--parent-task-id", default="")
     create.add_argument("--max-attempts", type=int, default=1)
+    create.add_argument("--source", default="manual")
+    create.add_argument("--workflow-id", default="")
+    create.add_argument("--idempotency-key", default="")
+    create.add_argument("--affected-file", action="append", default=[])
+    create.add_argument("--affected-skill", action="append", default=[])
+    create.add_argument("--require-approval", action="store_true")
+    create.add_argument("--approval-note", default="")
 
     claim = subparsers.add_parser("claim")
     claim.add_argument("--task-id", required=True)
@@ -70,6 +81,34 @@ def build_parser() -> argparse.ArgumentParser:
     show = subparsers.add_parser("show")
     show.add_argument("--task-id", required=True)
 
+    approve = subparsers.add_parser("approve")
+    approve.add_argument("--task-id", required=True)
+    approve.add_argument("--decision", choices=["approved", "rejected"], required=True)
+    approve.add_argument("--note", default="")
+    approve.add_argument("--resolved-by", default="chief")
+
+    route = subparsers.add_parser("route")
+    route.add_argument("--prompt", required=True)
+    route.add_argument("--command", dest="department_command", default="")
+    route.add_argument("--top-n", type=int, default=3)
+
+    plan = subparsers.add_parser("plan")
+    plan.add_argument("--prompt", required=True)
+    plan.add_argument("--command", dest="department_command", default="")
+    plan.add_argument("--created-by", default="chief")
+    plan.add_argument("--source", default="chief")
+    plan.add_argument("--dispatch", action="store_true")
+
+    start = subparsers.add_parser("start")
+    start.add_argument("--prompt", required=True)
+    start.add_argument("--command", dest="department_command", default="")
+    start.add_argument("--created-by", default="chief")
+    start.add_argument("--source", default="chief")
+    start.add_argument("--runner", default="chief")
+    start.add_argument("--lease-seconds", type=int, default=300)
+
+    sweep = subparsers.add_parser("sweep")
+
     return parser
 
 
@@ -94,6 +133,14 @@ def main() -> int:
             depends_on=args.depends_on,
             parent_task_id=args.parent_task_id,
             max_attempts=args.max_attempts,
+            source=args.source,
+            workflow_id=args.workflow_id,
+            idempotency_key=args.idempotency_key,
+            affected_files=args.affected_file,
+            affected_skills=args.affected_skill,
+            approval_required=args.require_approval,
+            approval_note=args.approval_note,
+            approval_requested_by=args.created_by,
         )
     elif args.command == "claim":
         result = claim_task(conn, args.task_id, args.runner, args.lease_seconds)
@@ -107,6 +154,37 @@ def main() -> int:
         result = dispatch_ready_tasks(conn, args.limit)
     elif args.command == "show":
         result = get_task(conn, args.task_id)
+    elif args.command == "approve":
+        result = resolve_task_approval(
+            conn,
+            args.task_id,
+            args.decision,
+            note=args.note,
+            resolved_by=args.resolved_by,
+        )
+    elif args.command == "route":
+        result = route_request(args.prompt, args.department_command, top_n=args.top_n)
+    elif args.command == "plan":
+        result = plan_request(
+            conn,
+            prompt=args.prompt,
+            command=args.department_command,
+            created_by=args.created_by,
+            source=args.source,
+            dispatch=args.dispatch,
+        )
+    elif args.command == "start":
+        result = start_fast_path(
+            conn,
+            prompt=args.prompt,
+            command=args.department_command,
+            created_by=args.created_by,
+            source=args.source,
+            runner_id=args.runner,
+            lease_seconds=args.lease_seconds,
+        )
+    elif args.command == "sweep":
+        result = expire_stale_claims(conn)
     else:
         raise RuntimeError(f"unsupported command: {args.command}")
 

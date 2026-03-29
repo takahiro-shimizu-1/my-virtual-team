@@ -17,47 +17,53 @@
 - [x] `AGENTS_CLAUDE.md` 生成を registry build に統合
 - [x] `.gitnexus/knowledge/` curated mirror を生成
 - [x] registry 生成を実行
-- [x] `.claude/rules/agent-launch.md` を v4 Phase 0 に更新
-- [x] `.claude/rules/context-reset.md` を更新
-- [x] `.claude/rules/reporting-format.md` を更新
-- [x] `CLAUDE.md` を v4 移行状態に更新
+- [x] `.claude/rules/agent-launch.md` を更新
+- [x] `CLAUDE.md` を更新
 
 ## Phase 1
 
 - [x] `.gitnexus/workspace.json` を追加
 - [x] `scripts/rebuild-agent-graph.sh` を追加
+- [x] `registry/skills.generated.json` を生成
 - [x] `npm run graph:build` を通す
-- [x] representative task で context resolver を検証し ranking を調整する
-
-## Phase 1 Notes
-
-- `docs/phase1-findings.md` に互換ブリッジと ranking 課題を記録
-- `scripts/resolve-agent-context.sh` は既定で `--depth 1` を使い、common guideline 経由のノイズを抑える
+- [x] representative task で context resolver を検証
 
 ## Phase 2
 
-- [x] durable store の schema を作成
+- [x] durable store schema を実装
 - [x] task lifecycle CLI を実装
-- [x] JSONL export を追加
-
-## Phase 2 Notes
-
-- `.runtime/state.db` を SSOT とし、`task-events-YYYY-MM-DD.jsonl` を mirror 出力
-- `create`, `dispatch`, `claim`, `heartbeat`, `complete`, `fail`, `show` を CLI で操作可能
-- lock contention と retryable fail を代表ケースで確認済み
+- [x] JSONL mirror export を追加
+- [x] approval / timeout / retry の基本動作を入れる
 
 ## Phase 3
 
-- [ ] chief を tracked fast path + DAG dispatch 前提に更新
-- [ ] runner bridge を実装
+- [x] chief を tracked fast path + DAG dispatch 前提に更新
+- [x] `runtime/src/control/router.py` を実装
+- [x] `runtime/src/control/decomposer.py` を実装
+- [x] `runtime/src/control/runner_bridge.py` を実装
+- [x] `.claude/commands/*.md` を runtime registration 前提に更新
 
 ## Phase 4
 
-- [ ] event bus を実装
-- [ ] Slack / Notion / activity log を adapter 化
-- [ ] local watcher を実装
+- [x] event bus を実装
+- [x] Slack / Notion / activity log を adapter 化
+- [x] local watcher を実装
+- [x] `/health` 相当の集計 CLI を追加
 
 ## Phase 5
 
-- [ ] `CLAUDE.md.builder` を v4 対応
-- [ ] 新規生成チームで v4 構成を検証
+- [x] `docs/builder-migration.md` を追加
+- [x] `CLAUDE.md.builder` に v4 出力契約を追記
+- [x] 新規生成に必要な出力物一覧を builder へ明記
+
+## Validation
+
+- [x] `npm run registry:build`
+- [x] `npm run graph:build`
+- [x] `npm run runtime:migrate`
+- [x] `npm run runtime:test`
+- [x] `runtime:task route` で representative routing を確認
+- [x] `runtime:task plan --dispatch` で multi-phase workflow を確認
+- [x] `runtime:watch`
+- [x] `runtime:health`
+- [x] `runtime:events`

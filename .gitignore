@@ -4,5 +4,6 @@ __pycache__/
 .runtime/
 .gitnexus/agent-graph.db
 .gitnexus/knowledge/
+logs/activity-log.json
 outputs/tmp/
 dist/

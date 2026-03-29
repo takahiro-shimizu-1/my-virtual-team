@@ -27,6 +27,9 @@ def row_to_task(row) -> dict:
         "title": row["title"],
         "description": row["description"],
         "agent_id": row["agent_id"],
+        "source": row["source"] if "source" in row.keys() else "manual",
+        "workflow_id": row["workflow_id"] if "workflow_id" in row.keys() else "",
+        "idempotency_key": row["idempotency_key"] if "idempotency_key" in row.keys() else "",
         "status": row["status"],
         "priority": row["priority"],
         "task_mode": row["task_mode"],
@@ -34,6 +37,8 @@ def row_to_task(row) -> dict:
         "claimed_by": row["claimed_by"],
         "payload": parse_json(row["payload_json"]),
         "lock_targets": parse_json(row["lock_targets_json"]),
+        "affected_files": parse_json(row["affected_files_json"]) if "affected_files_json" in row.keys() else [],
+        "affected_skills": parse_json(row["affected_skills_json"]) if "affected_skills_json" in row.keys() else [],
         "parent_task_id": row["parent_task_id"],
         "max_attempts": row["max_attempts"],
         "current_attempt": row["current_attempt"],
@@ -51,6 +56,18 @@ def cleanup_expired_locks(conn) -> int:
     now = now_iso()
     cursor = conn.execute("DELETE FROM task_locks WHERE expires_at != '' AND expires_at <= ?", (now,))
     return cursor.rowcount
+
+
+def has_pending_approval(conn, task_id: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS pending_count
+        FROM task_approvals
+        WHERE task_id = ? AND decision = 'pending'
+        """,
+        (task_id,),
+    ).fetchone()
+    return bool(row["pending_count"])
 
 
 def has_incomplete_dependencies(conn, task_id: str) -> bool:
@@ -81,6 +98,20 @@ def record_event(conn, task_id: str, event_type: str, payload: dict) -> dict:
     }
     append_event_mirror(event)
     return event
+
+
+def record_skill_run(conn, task: dict, result: str, score: float) -> None:
+    payload = task.get("payload", {})
+    skill_id = payload.get("skill_id") or (f"agent:{task['agent_id']}" if task.get("agent_id") else "")
+    if not skill_id:
+        return
+    conn.execute(
+        """
+        INSERT INTO skill_runs (task_id, agent_id, skill_id, result, score, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (task["task_id"], task["agent_id"], skill_id, result, score, now_iso()),
+    )
 
 
 def acquire_locks(conn, task_id: str, lock_targets: list[str], expires_at: str) -> list[str]:
@@ -122,11 +153,21 @@ def create_task(
     depends_on: list[str] | None = None,
     parent_task_id: str = "",
     max_attempts: int = 1,
+    source: str = "manual",
+    workflow_id: str = "",
+    idempotency_key: str = "",
+    affected_files: list[str] | None = None,
+    affected_skills: list[str] | None = None,
+    approval_required: bool = False,
+    approval_note: str = "",
+    approval_requested_by: str = "",
     task_id: str | None = None,
 ) -> dict:
     payload = payload or {}
     lock_targets = lock_targets or []
     depends_on = depends_on or []
+    affected_files = affected_files or []
+    affected_skills = affected_skills or []
     task_id = task_id or f"task-{uuid.uuid4().hex[:12]}"
     timestamp = now_iso()
 
@@ -135,8 +176,9 @@ def create_task(
         INSERT INTO tasks (
           task_id, title, description, agent_id, status, priority, task_mode, created_by,
           payload_json, lock_targets_json, parent_task_id, max_attempts, current_attempt,
+          source, workflow_id, idempotency_key, affected_files_json, affected_skills_json,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        ) VALUES (?, ?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             task_id,
@@ -150,6 +192,11 @@ def create_task(
             serialize(lock_targets),
             parent_task_id,
             max_attempts,
+            source,
+            workflow_id,
+            idempotency_key,
+            serialize(affected_files),
+            serialize(affected_skills),
             timestamp,
             timestamp,
         ),
@@ -172,8 +219,28 @@ def create_task(
             "task_mode": task_mode,
             "depends_on": depends_on,
             "lock_targets": lock_targets,
+            "workflow_id": workflow_id,
+            "source": source,
+            "affected_skills": affected_skills,
         },
     )
+    if approval_required:
+        conn.execute(
+            """
+            INSERT INTO task_approvals (task_id, requested_by, decision, note, created_at)
+            VALUES (?, ?, 'pending', ?, ?)
+            """,
+            (task_id, approval_requested_by or created_by, approval_note, timestamp),
+        )
+        record_event(
+            conn,
+            task_id,
+            "approval.requested",
+            {
+                "requested_by": approval_requested_by or created_by,
+                "note": approval_note,
+            },
+        )
     conn.commit()
     return get_task(conn, task_id)
 
@@ -197,10 +264,30 @@ def get_task(conn, task_id: str) -> dict:
             (task_id,),
         ).fetchall()
     ]
+    task["approvals"] = [
+        {
+            "approval_id": approval["approval_id"],
+            "requested_by": approval["requested_by"],
+            "decision": approval["decision"],
+            "note": approval["note"],
+            "created_at": approval["created_at"],
+            "resolved_at": approval["resolved_at"],
+        }
+        for approval in conn.execute(
+            """
+            SELECT approval_id, requested_by, decision, note, created_at, resolved_at
+            FROM task_approvals
+            WHERE task_id = ?
+            ORDER BY approval_id
+            """,
+            (task_id,),
+        ).fetchall()
+    ]
     return task
 
 
 def dispatch_ready_tasks(conn, limit: int = 20) -> list[dict]:
+    expire_stale_claims(conn)
     cleanup_expired_locks(conn)
     rows = conn.execute(
         """
@@ -212,6 +299,11 @@ def dispatch_ready_tasks(conn, limit: int = 20) -> list[dict]:
             FROM task_dependencies td
             JOIN tasks dep ON dep.task_id = td.depends_on_task_id
             WHERE td.task_id = t.task_id AND dep.status != 'completed'
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM task_approvals ta
+            WHERE ta.task_id = t.task_id AND ta.decision = 'pending'
           )
         ORDER BY t.created_at
         LIMIT ?
@@ -234,6 +326,7 @@ def dispatch_ready_tasks(conn, limit: int = 20) -> list[dict]:
 
 
 def claim_task(conn, task_id: str, runner_id: str, lease_seconds: int = 300) -> dict:
+    expire_stale_claims(conn)
     cleanup_expired_locks(conn)
     row = conn.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,)).fetchone()
     if not row:
@@ -244,6 +337,8 @@ def claim_task(conn, task_id: str, runner_id: str, lease_seconds: int = 300) -> 
         raise RuntimeError(f"task is not claimable: {task['status']}")
     if has_incomplete_dependencies(conn, task_id):
         raise RuntimeError("task has incomplete dependencies")
+    if has_pending_approval(conn, task_id):
+        raise RuntimeError("task has pending approval")
     if task["current_attempt"] >= task["max_attempts"]:
         raise RuntimeError("task has exhausted max attempts")
 
@@ -311,6 +406,50 @@ def heartbeat_task(conn, task_id: str, lease_seconds: int = 300) -> dict:
     return get_task(conn, task_id)
 
 
+def resolve_task_approval(conn, task_id: str, decision: str, note: str = "", resolved_by: str = "chief") -> dict:
+    approval = conn.execute(
+        """
+        SELECT approval_id
+        FROM task_approvals
+        WHERE task_id = ? AND decision = 'pending'
+        ORDER BY approval_id DESC
+        LIMIT 1
+        """,
+        (task_id,),
+    ).fetchone()
+    if not approval:
+        raise RuntimeError(f"pending approval not found for task: {task_id}")
+
+    timestamp = now_iso()
+    merged_note = note if note else resolved_by
+    conn.execute(
+        """
+        UPDATE task_approvals
+        SET decision = ?, note = ?, resolved_at = ?
+        WHERE approval_id = ?
+        """,
+        (decision, merged_note, timestamp, approval["approval_id"]),
+    )
+
+    if decision == "rejected":
+        conn.execute(
+            """
+            UPDATE tasks
+            SET status = 'blocked',
+                error_message = ?,
+                updated_at = ?
+            WHERE task_id = ?
+            """,
+            (merged_note, timestamp, task_id),
+        )
+        record_event(conn, task_id, "approval.rejected", {"resolved_by": resolved_by, "note": merged_note})
+    else:
+        record_event(conn, task_id, "approval.approved", {"resolved_by": resolved_by, "note": merged_note})
+
+    conn.commit()
+    return get_task(conn, task_id)
+
+
 def complete_task(conn, task_id: str, outputs: list[str] | None = None) -> dict:
     outputs = outputs or []
     row = conn.execute("SELECT * FROM tasks WHERE task_id = ?", (task_id,)).fetchone()
@@ -348,6 +487,7 @@ def complete_task(conn, task_id: str, outputs: list[str] | None = None) -> dict:
         )
 
     released = release_locks(conn, task_id)
+    record_skill_run(conn, task, "completed", 1.0)
     record_event(conn, task_id, "task.completed", {"outputs": outputs, "released_locks": released})
     conn.commit()
     return get_task(conn, task_id)
@@ -412,5 +552,83 @@ def fail_task(conn, task_id: str, error_message: str, retryable: bool = False) -
             {"error_message": error_message, "released_locks": released},
         )
 
+    record_skill_run(conn, task, "failed", 0.0)
     conn.commit()
     return get_task(conn, task_id)
+
+
+def expire_stale_claims(conn) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT * FROM tasks
+        WHERE status = 'claimed'
+          AND lease_expires_at != ''
+          AND lease_expires_at <= ?
+        ORDER BY lease_expires_at
+        """,
+        (now_iso(),),
+    ).fetchall()
+    expired = []
+    for row in rows:
+        task = row_to_task(row)
+        timestamp = now_iso()
+        released = release_locks(conn, task["task_id"])
+        conn.execute(
+            """
+            UPDATE task_attempts
+            SET status = 'failed', error_message = ?, finished_at = ?
+            WHERE task_id = ? AND attempt_no = ?
+            """,
+            ("lease expired", timestamp, task["task_id"], task["current_attempt"]),
+        )
+        if task["current_attempt"] < task["max_attempts"]:
+            conn.execute(
+                """
+                UPDATE tasks
+                SET status = 'created',
+                    updated_at = ?,
+                    lease_expires_at = '',
+                    last_heartbeat_at = '',
+                    claimed_by = '',
+                    claimed_at = '',
+                    error_message = 'lease expired'
+                WHERE task_id = ?
+                """,
+                (timestamp, task["task_id"]),
+            )
+            record_event(
+                conn,
+                task["task_id"],
+                "task.timeout",
+                {"released_locks": released, "requeued": True},
+            )
+            record_event(
+                conn,
+                task["task_id"],
+                "task.requeued",
+                {"error_message": "lease expired", "released_locks": released},
+            )
+            record_skill_run(conn, task, "timeout", 0.0)
+        else:
+            conn.execute(
+                """
+                UPDATE tasks
+                SET status = 'failed',
+                    updated_at = ?,
+                    lease_expires_at = '',
+                    error_message = 'lease expired'
+                WHERE task_id = ?
+                """,
+                (timestamp, task["task_id"]),
+            )
+            record_event(
+                conn,
+                task["task_id"],
+                "task.timeout",
+                {"released_locks": released, "requeued": False},
+            )
+            record_skill_run(conn, task, "timeout", 0.0)
+        expired.append(get_task(conn, task["task_id"]))
+
+    conn.commit()
+    return expired

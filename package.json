@@ -11,6 +11,11 @@
     "graph:build": "bash scripts/rebuild-agent-graph.sh",
     "graph:context": "bash scripts/resolve-agent-context.sh",
     "runtime:migrate": "python3 runtime/src/cli/migrate.py",
-    "runtime:task": "bash scripts/runtime-task.sh"
+    "runtime:task": "bash scripts/runtime-task.sh",
+    "runtime:events": "python3 runtime/src/cli/events.py publish",
+    "runtime:health": "python3 runtime/src/cli/health.py",
+    "runtime:watch": "python3 runtime/src/cli/watch.py scan",
+    "runtime:integrations": "python3 runtime/src/cli/integrations.py",
+    "runtime:test": "python3 -m unittest discover -s runtime/tests -p 'test_*.py'"
   }
 }

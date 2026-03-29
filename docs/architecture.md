@@ -2,7 +2,7 @@
 
 ## Goal
 
-`my-virtual-team` を、静的なプロンプト集から、知識・状態・実行・運用を分離したマルチエージェント基盤へ移行する。
+`my-virtual-team` を、静的な prompt 集ではなく、Knowledge Plane / Control Plane / Execution Plane / Operations Plane を分離したマルチエージェント基盤として運用する。
 
 ## 4 Plane
 
@@ -12,51 +12,57 @@
 - `guidelines/`
 - `templates/`
 - `.gitnexus/workspace.json`
+- `registry/*.generated.json`
 - GitNexus Agent Context Graph
 
-役割:
+責務:
 
-- agent / skill / document / data の関係解決
-- task に必要な最小コンテキストの抽出
+- agent / skill / document の関係解決
+- required context の最小抽出
+- stale graph の検知と rebuild
 
 ### Control Plane
 
-- durable task state
-- dependency resolution
-- lock management
-- retry / approval
+- `.runtime/state.db`
+- `runtime/src/control/*`
+- `runtime/src/db/*`
 
-役割:
+責務:
 
-- すべての task の登録
-- 並列実行制御
-- state transition の追跡
+- 全 task の登録
+- DAG / dependency 解決
+- lock / retry / timeout / approval
+- event 発火と JSONL mirror export
 
 ### Execution Plane
 
-- chief
-- sub-agent launch rules
-- runner bridge
+- `CLAUDE.md`
+- `.claude/commands/*.md`
+- `.claude/rules/*.md`
+- `runtime/src/control/runner_bridge.py`
 
-役割:
+責務:
 
-- task claim
-- context loading
-- output 生成
-- handoff 出力
+- owner / collaborator の routing
+- tracked fast path と multi-phase workflow の分岐
+- required_context に絞った起動
+- outputs / handoff の生成
 
 ### Operations Plane
 
-- activity logging
-- Slack / Notion integration
-- health aggregation
-- local file watcher
+- `runtime/src/events/*`
+- `runtime/src/integrations/*`
+- `runtime/src/health/*`
+- `runtime/src/watchers/*`
+- `scripts/log-activity.sh`
+- `scripts/slack-notify.sh`
+- `scripts/notion-sync.sh`
 
-役割:
+責務:
 
-- 通知
-- 監視
-- 障害時の状況把握
+- activity log / Slack / Notion への fan-out
+- queue / lock / failure / skill health の集計
+- local asset diff の検知
 
 ## SSOT
 
@@ -65,25 +71,22 @@
 | agent metadata | `agents/*.md` frontmatter |
 | agent persona / behavior | `agents/*.md` 本文 |
 | workspace topology | `.gitnexus/workspace.json` |
-| task state | durable store |
-| outputs | `outputs/` |
+| task / lock / event / approval / health | `.runtime/state.db` |
+| outputs / handoff | `outputs/` |
 | generated registry | `registry/*.generated.json` |
 
-## Phase 0 Scope
+## Core Flow
 
-Phase 0 では以下だけを先に固める。
-
-- context tier の導入
-- top-posts の分割資産化
-- frontmatter を使った metadata SSOT 化
-- registry 自動生成
-- outputs / handoff の標準化
-
-Phase 0 ではまだ durable store や task runtime は実装しない。
+1. chief が `route` で owner / collaborator / required_context を決める
+2. `start` か `plan --dispatch` で task を DB に登録する
+3. approval pending があれば chief が判断する
+4. runner が claim して実行し、`complete` / `fail` / `timeout` を記録する
+5. event bus が activity log / Slack / Notion へ fan-out する
+6. `/health` と watcher で queue / skill / knowledge diff を観測する
 
 ## Non-Goals
 
 - OpenClaw 本番連携
-- GitHub pipeline 自動化
-- 外部 trend watcher
-- JSONL を primary runtime にすること
+- GitHub / LINE adapter
+- 外部 RSS / competitor watcher
+- JSONL を primary runtime に戻すこと

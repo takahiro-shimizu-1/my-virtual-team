@@ -36,6 +36,42 @@
 
 ---
 
+## v4 出力契約
+
+この builder は `my-virtual-team v4` を生成する。後ろの古い例と衝突する場合は、このセクションを優先する。
+
+### 必須生成物
+
+- `.gitignore`
+- `package.json`
+- `outputs/.gitkeep`
+- `logs/.gitkeep`
+- `.gitnexus/workspace.json`
+- `runtime/` 一式
+- `scripts/build-registry.js`
+- `scripts/rebuild-agent-graph.sh`
+- `scripts/runtime-task.sh`
+- runtime CLI を呼ぶ `log-activity.sh` / `slack-notify.sh` / `notion-sync.sh`
+- frontmatter 入り `agents/*.md`
+
+### 生成ルール
+
+1. agent metadata の SSOT は `agents/*.md` frontmatter
+2. `registry/*.generated.json` は build で生成し、手書きしない
+3. すべての task は `route / start / plan / approve` を通す
+4. 部門ルーターは Agent tool 直起動ではなく runtime registration を案内する
+5. builder 完了時に以下を実行して検証する
+
+```bash
+npm run registry:build
+npm run graph:build
+npm run runtime:migrate
+npm run runtime:watch
+npm run runtime:health
+```
+
+---
+
 ## フェーズ1: 基本情報ヒアリング
 
 以下の6つの質問を、1つずつ丁寧に聞いてください。
