@@ -9,6 +9,7 @@
 - `.gitignore`
 - `package.json`
 - `.github/workflows/validate.yml`
+- `.github/workflows/github-ops.yml`
 - `outputs/.gitkeep`
 - `logs/.gitkeep`
 - `.gitnexus/workspace.json`
@@ -30,6 +31,9 @@
 - `scripts/log-activity.sh`
 - `scripts/slack-notify.sh`
 - `scripts/notion-sync.sh`
+- `scripts/github-event-bridge.py`
+- `scripts/github-issue.sh`
+- `scripts/github-pr-comment.sh`
 - frontmatter 入り `agents/*.md`
 
 ## builder が守る契約
@@ -67,6 +71,7 @@ npm run validate:v4
 - SQLite durable store
 - repo-local GitNexus builder / resolver
 - event-driven integrations
+- GitHub issue / PR operations と bridge workflow
 - watcher / health / graph freshness まで含めて完成
 - `runtime:task` と `graph:context` は通常利用で self-healing に動く
 - `validate:v4` で構成検証できる

@@ -73,10 +73,11 @@ generated file は参照補助であり、正本として扱わない。
 - graph rebuild: `npm run registry:build && npm run graph:build`
 - DB migrate: `npm run runtime:migrate`
 - event fan-out: `npm run runtime:events`
+- GitHub event dry run: `npm run runtime:github-bridge -- handle --event-name issues --event-path event.json --dry-run`
 - health: `npm run runtime:health`
 - watcher: `npm run runtime:watch`
 
-Slack / Notion は credentials があれば送信し、なければ `skipped` として delivery history に残す。
+Slack / Notion / GitHub は credentials があれば送信し、なければ `skipped` として delivery history に残す。
 `runtime:task` と `graph:context` は必要な準備を自動で走らせるので、通常利用では毎回 bootstrap を手で打たなくてよい。
 
 ## 成果物ルール
