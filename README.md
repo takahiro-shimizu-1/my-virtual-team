@@ -108,3 +108,7 @@ gh workflow run github-ops.yml --ref <branch> -f scenario=issues -f prompt='API�
 - [GitHub Operations](docs/github-ops.md): Issue / PR 運用、slash command、認証、native agent kickoff
 - [Architecture](docs/architecture.md): 4 Plane 構成、SSOT、core flow
 - [AI Smoke Tests](docs/copilot-smoke.md): GitHub event bridge と AI workflow の smoke test 確認項目
+
+---
+
+*This issue verified deterministic native agent PR verification dispatch.*
