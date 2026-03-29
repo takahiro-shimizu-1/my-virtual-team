@@ -1,8 +1,9 @@
 name: claude-review
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: ["validate", "Copilot coding agent"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -12,37 +13,50 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == ''
     env:
       VIRTUAL_TEAM_PR_AGENT_MENTION: ${{ vars.VIRTUAL_TEAM_PR_AGENT_MENTION }}
     steps:
+      - name: Resolve AI PR from head branch
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if ! echo "${HEAD_BRANCH}" | grep -Eq '^(copilot|claude|codex-agent|codex)/'; then
+            exit 0
+          fi
+
+          PR_NUMBER=$(gh pr list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --head "${HEAD_BRANCH}" \
+            --json number \
+            --jq '.[0].number')
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            exit 0
+          fi
+
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
       - name: Build native review prompt
+        if: steps.pr.outputs.number != ''
         id: review
         run: |
           AGENT_MENTION="${VIRTUAL_TEAM_PR_AGENT_MENTION:-@copilot}"
-          AUTHOR_LOGIN="${{ github.event.pull_request.user.login }}"
-          if echo "$AUTHOR_LOGIN" | tr '[:upper:]' '[:lower:]' | grep -Eq 'copilot|claude|codex'; then
-            SHOULD_TRIGGER=true
-          else
-            SHOULD_TRIGGER=false
-          fi
-
-          if [ "$SHOULD_TRIGGER" = "true" ]; then
-            BODY="$AGENT_MENTION Please inspect this pull request for correctness, regression risks, and missing tests. If you find issues, push follow-up fixes and summarize them on the PR."
-          else
-            BODY="Native AI review is available. Mention ${AGENT_MENTION} on this PR if you want a subscription-based coding agent to inspect or iterate on it."
-          fi
-
+          BODY="$AGENT_MENTION Please inspect this pull request for correctness, regression risks, and missing tests. If you find issues, push follow-up fixes and summarize them on the PR."
           {
             echo "body<<EOF"
             echo "$BODY"
             echo "EOF"
-            echo "triggered=$SHOULD_TRIGGER"
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment native review handoff
+        if: steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr comment ${{ github.event.pull_request.number }} \
+          gh pr comment "${{ steps.pr.outputs.number }}" \
             --repo ${{ github.repository }} \
             --body "${{ steps.review.outputs.body }}"

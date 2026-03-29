@@ -9,15 +9,15 @@
 - `claude-decompose.yml`
   issue に `claude` または `auto` label が付くと、repo-local planner が atomic / decomposition を判定し、subscription-based implementation flow へ渡す
 - `copilot-assign.yml`
-  issue に `copilot` または `auto` label が付くと、既定で subscription-native coding agent kickoff を実行する
+  issue に `copilot` または `auto` label が付くと、`VIRTUAL_TEAM_GH_USER_TOKEN` で認証して subscription-native coding agent kickoff を実行する
 - `claude-review.yml`
-  PR opened / synchronize / reopened で既定の native agent mention を投稿する
+  AI branch の validate / coding-agent 完了後に既定の native agent mention を投稿する
 - `auto-merge.yml`
   review approved と check success 後に自動 merge を試みる
 - `copilot-watchdog.yml`
   Copilot branch 上で `action_required` になった workflow を再実行する
 - `gitnexus-impact.yml`
-  PR changed files から impacted agents / skills / docs を自動コメントする
+  AI branch の validate 完了後に impacted agents / skills / docs を自動コメントする
 - `gitnexus-reindex.yml`
   merge 後に graph を再構築して artifact を残す
 - `gitnexus-weekly.yml`
@@ -28,7 +28,7 @@
 ## 既定の実行方式
 
 - 既定:
-  `github.token` + GitHub Copilot / third-party agent subscription
+  `VIRTUAL_TEAM_GH_USER_TOKEN` + GitHub Copilot / third-party agent subscription
 - 実装担当 agent:
   repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT`
   未設定時は `copilot-swe-agent`
@@ -40,10 +40,10 @@
 
 GitHub-hosted kickoff は `VIRTUAL_TEAM_GH_USER_TOKEN` を優先し、runner 上で `gh auth login --with-token` してから native task を起動する。現在の repo ではこれを既定にしている。
 
-## 任意の API fallback
+## API fallback
 
-必要なら vendor CLI / API ベースの workflow に戻せるが、それは既定ではない。  
-この repo の既定ルートは subscription-native agents である。
+vendor CLI / API ベースの workflow へ戻すこと自体は可能だが、既定ルートではない。  
+この repo は subscription-native agents を正規ルートとして扱う。
 
 ## 運用の基本形
 
@@ -51,14 +51,14 @@ GitHub-hosted kickoff は `VIRTUAL_TEAM_GH_USER_TOKEN` を優先し、runner 上
 2. `claude` か `auto` label を付ける
 3. local planner が atomic 判定または sub-issue 分解を返す
 4. atomic issue には `copilot` label が付き、GitHub Actions が subscription-native coding agent task を自動起動する
-5. PR が作られたら native review handoff comment が走る
+5. AI branch の push validate が通ると native review handoff と impact comment が走る
 6. review / checks が揃えば auto-merge を試みる
 7. 定期 maintenance と weekly reindex が裏側の health を保つ
 
-## Secret 未設定時の挙動
+## 必須前提
 
 native route 自体は vendor API secret 不要。  
-ただし GitHub Actions から user-authenticated に起動するため、既定では `VIRTUAL_TEAM_GH_USER_TOKEN` を使う。
+ただし GitHub Actions から user-authenticated に起動するため、`VIRTUAL_TEAM_GH_USER_TOKEN` は必須である。未設定なら kickoff workflow は失敗する。
 
 ## いまの境界
 

@@ -57,7 +57,7 @@ user-authenticated subscription route:
 npm run github:agent-task -- issue --issue-number 7 --follow
 ```
 
-これは `gh agent-task create` を使う。現在の repo では GitHub Actions も同じ native route を `VIRTUAL_TEAM_GH_USER_TOKEN` 経由で既定利用するので、通常は人手で打つ必要はない。上のコマンドは emergency fallback と smoke test 用。
+これは `gh agent-task create` を使う。現在の repo では GitHub Actions も同じ native route を `VIRTUAL_TEAM_GH_USER_TOKEN` 経由で既定利用するので、通常は人手で打つ必要はない。上のコマンドは smoke / diagnosis 用。
 
 ## 自動 workflow
 
@@ -67,8 +67,6 @@ npm run github:agent-task -- issue --issue-number 7 --follow
 - `issues.opened`
 - `issues.reopened`
 - `issue_comment.created`
-- `pull_request_target.opened`
-- `pull_request_target.reopened`
 
 `workflow_dispatch` では synthetic payload を `--dry-run` で流せるので、branch 上でも GitHub-hosted smoke test ができる。
 
@@ -123,14 +121,12 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 この repo では既定で `copilot-swe-agent` を implementation agent として扱う。  
 GitHub 側で Anthropic Claude や OpenAI Codex の third-party agent を有効化している場合は、repo variable を変えるだけで native route を切り替えられる。
 
-実運用上は 2 つの path がある。
+実運用上の正規 path は 1 つである。
 
 - GitHub-hosted default:
-  issue label -> workflow -> `gh agent-task create`
-- local emergency fallback:
-  `gh agent-task create` を wrapper 経由で起動
+  issue label -> workflow -> `gh auth login --with-token` -> `gh agent-task create`
 
-前者も後者も GitHub subscription に紐づくユーザー文脈で起動するため、vendor API key なしで native agent を動かせる。現在の repo では maintainer の `gh auth` を repo secret 化してあり、利用者が別途手動起動する前提はない。
+この経路は GitHub subscription に紐づくユーザー文脈で起動するため、vendor API key なしで native agent を動かせる。現在の repo では maintainer の `gh auth` を repo secret 化してあり、利用者が別途手動起動する前提はない。
 
 実測では以下が確認できた。
 

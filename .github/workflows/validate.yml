@@ -5,7 +5,9 @@ on:
     branches:
       - master
       - "codex/**"
-  pull_request:
+      - "copilot/**"
+      - "claude/**"
+      - "codex-agent/**"
 
 jobs:
   validate:

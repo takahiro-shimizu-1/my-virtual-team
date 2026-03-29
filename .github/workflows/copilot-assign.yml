@@ -23,24 +23,18 @@ jobs:
       - name: Launch subscription-native coding agent
         id: launch
         run: |
-          if [ -n "${PREFERRED_GH_TOKEN}" ]; then
-            printf '%s\n' "${PREFERRED_GH_TOKEN}" | gh auth login --hostname github.com --with-token
-            TOKEN_SOURCE="repo-secret-oauth"
-          else
-            TOKEN_SOURCE="github-token"
+          if [ -z "${PREFERRED_GH_TOKEN}" ]; then
+            echo "VIRTUAL_TEAM_GH_USER_TOKEN is required for autonomous native kickoff." >&2
+            exit 1
           fi
 
-          set +e
-          if [ -n "${PREFERRED_GH_TOKEN}" ]; then
-            OUTPUT=$(python3 scripts/github-agent-task.py issue \
-              --issue-number ${{ github.event.issue.number }} \
-              --repo ${{ github.repository }} 2>&1)
-            STATUS=$?
-          else
-            OUTPUT="VIRTUAL_TEAM_GH_USER_TOKEN is not configured. gh agent-task requires OAuth login and cannot run with github.token only."
-            STATUS=1
-          fi
-          set -e
+          printf '%s\n' "${PREFERRED_GH_TOKEN}" | gh auth login --hostname github.com --with-token
+          TOKEN_SOURCE="repo-secret-oauth"
+
+          OUTPUT=$(python3 scripts/github-agent-task.py issue \
+            --issue-number ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} 2>&1)
+          STATUS=$?
 
           {
             echo "token_source=$TOKEN_SOURCE"
@@ -50,40 +44,12 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Fallback to native assign API
-        id: assign
-        if: steps.launch.outputs.status != '0'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          AGENT_LOGIN="${VIRTUAL_TEAM_IMPLEMENTATION_AGENT:-copilot-swe-agent}"
-          OUTPUT=$(./scripts/github-issue.sh github-issue-assign \
-            --issue-number ${{ github.event.issue.number }} \
-            --assignee "$AGENT_LOGIN" \
-            --repo ${{ github.repository }} 2>&1)
-          STATUS=$?
-          set -e
-
-          {
-            echo "agent_login=$AGENT_LOGIN"
-            echo "status=$STATUS"
-            echo "result<<EOF"
-            echo "$OUTPUT"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Comment kickoff result
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ steps.launch.outputs.status }}" = "0" ]; then
-            BODY="Subscription-native coding agent kickoff started automatically for this issue.\n\nToken source: \`${{ steps.launch.outputs.token_source }}\`."
-          elif [ "${{ steps.assign.outputs.status }}" = "0" ]; then
-            BODY="Native coding agent could not be started through \`gh agent-task create\`, but fallback assignment succeeded for \`${{ steps.assign.outputs.agent_login }}\`."
-          else
-            BODY="⚠️ Automatic native coding agent kickoff did not complete.\n\nPrimary path:\n- \`gh agent-task create\` via \`${{ steps.launch.outputs.token_source || 'github-token' }}\`\n\nFallback assign path:\n- \`${{ steps.assign.outputs.agent_login || 'copilot-swe-agent' }}\`\n\nInspect workflow logs before retrying."
-          fi
+          BODY="Subscription-native coding agent kickoff started automatically for this issue.\n\nToken source: \`${{ steps.launch.outputs.token_source }}\`."
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
             --body "$BODY"

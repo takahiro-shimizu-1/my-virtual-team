@@ -14,7 +14,7 @@ Smoke tests は以下を確認する。
 |------|----------|
 | Issue 作成 (`issues.opened`) | イベントを受信し、タイトル・本文からルーティングが決定される |
 | Issue コメント (`issue_comment.created`) | コメント内のスラッシュコマンドが解釈・実行される |
-| Pull Request (`pull_request_target.opened`) | PR 本文からルーティングが決定される |
+| Synthetic Pull Request (`workflow_dispatch`) | 合成 PR payload で PR ルーティング分岐を dry-run 検証する |
 
 いずれも `--dry-run` で実行され、実際の API 呼び出しや状態変更は行わない。
 
@@ -24,13 +24,13 @@ Smoke tests は以下を確認する。
 
 ### `validate` (`.github/workflows/validate.yml`)
 
-- **トリガー**: `master` / `codex/**` への push、Pull Request
+- **トリガー**: `master` / `codex/**` / `copilot/**` / `claude/**` / `codex-agent/**` への push
 - **役割**: `npm run ci:verify` を実行し、ブートストラップ・ユニットテスト・スモークテストを含む v4 契約全体を検証する
-- **Smoke test の位置付け**: `ci:verify` の中で `scripts/github-event-bridge.py` を `--dry-run` で呼び出し、Issue / Issue コメント / PR の 3 シナリオを検証する
+- **Smoke test の位置付け**: `ci:verify` の中で `scripts/github-event-bridge.py` を `--dry-run` で呼び出し、Issue / Issue コメント / synthetic PR の 3 シナリオを検証する
 
 ### `github-ops` (`.github/workflows/github-ops.yml`)
 
-- **トリガー**: `codex/**` への push、`workflow_dispatch`、`issues`、`issue_comment`、`pull_request_target`
+- **トリガー**: `codex/**` への push、`workflow_dispatch`、`issues`、`issue_comment`
 - **役割**:
   - `bridge-live`: 本番 GitHub イベントを受けてルーティング・タスク登録を行う
   - `bridge-push-smoke`: push 時に合成イベントペイロードで 3 シナリオを `--dry-run` 検証する
