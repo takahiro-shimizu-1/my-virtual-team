@@ -15,6 +15,7 @@ REQUIRED_PATHS = [
     "package-lock.json",
     ".github/workflows/validate.yml",
     ".github/workflows/github-ops.yml",
+    "README.md",
     "CLAUDE.md",
     "CLAUDE.md.builder",
     ".gitnexus/workspace.json",
@@ -45,6 +46,7 @@ REQUIRED_PATHS = [
     "runtime/src/control/router.py",
     "runtime/src/control/decomposer.py",
     "runtime/src/control/runner_bridge.py",
+    "runtime/src/control/codex_runner.py",
     "runtime/src/events/bus.py",
     "runtime/src/integrations/github_ops.py",
     "runtime/src/health/aggregate.py",
@@ -193,6 +195,7 @@ def check_docs_for_absolute_paths(errors: list[str]) -> None:
         ROOT / "CLAUDE.md",
         ROOT / "CLAUDE.md.builder",
         ROOT / "DESIGN_CONSTRAINTS.md",
+        ROOT / "README.md",
     ]
     for target in targets:
         paths = target.rglob("*.md") if target.is_dir() else [target]

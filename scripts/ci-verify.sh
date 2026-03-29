@@ -68,6 +68,18 @@ assert "桐島 蓮" in payload["matched_agents"] or "九条 ハル" in payload["
 assert any(path.endswith("api-design-review.md") for path in payload["files_to_read"]), payload
 PY
 
+VIRTUAL_TEAM_SKIP_ENSURE=1 bash scripts/runtime-task.sh codex --prompt "README.md を整備して quickstart をまとめて" --command admin --target-path README.md --dry-run > "$TMP_DIR/codex-dry-run.json"
+python3 - "$TMP_DIR/codex-dry-run.json" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["route"]["owner"]["agent_id"] == "komiya-sakura", payload
+assert payload["execution"]["status"] == "dry_run", payload
+assert payload["execution"]["output_paths"] == ["README.md"], payload
+PY
+
 python3 runtime/src/cli/watch.py scan > "$TMP_DIR/watch.json"
 python3 runtime/src/cli/events.py publish > "$TMP_DIR/events.json"
 python3 runtime/src/cli/health.py > "$TMP_DIR/health.json"

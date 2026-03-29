@@ -59,6 +59,8 @@
 - [x] repo-local GitNexus builder / resolver を追加
 - [x] GitHub Actions validation を追加
 - [x] GitHub issue / PR bridge workflow を追加
+- [x] local Codex runner を追加
+- [x] `README.md` を Codex workflow で生成
 - [x] `validate:v4` を追加し builder 完了条件を executable にした
 
 ## Validation
@@ -70,6 +72,8 @@
 - [x] `npm run runtime:test`
 - [x] `runtime:task route` で representative routing を確認
 - [x] `runtime:task plan --dispatch` で multi-phase workflow を確認
+- [x] `runtime:task codex --dry-run` で local Codex flow を確認
+- [x] `runtime:task codex` で `README.md` を実生成
 - [x] `runtime:watch`
 - [x] `runtime:health`
 - [x] `runtime:events`

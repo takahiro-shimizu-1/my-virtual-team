@@ -12,6 +12,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from control.runner_bridge import plan_request
+from control.codex_runner import run_codex_task
 from control.router import route_request
 from control.task_store import complete_task, create_task, dispatch_ready_tasks, resolve_task_approval
 from db.connection import connect_db
@@ -141,6 +142,26 @@ class RuntimeFlowTests(unittest.TestCase):
         report = build_health_report(self.conn)
         self.assertIn("status_counts", report)
         self.assertIn("knowledge_diffs", report)
+
+    def test_codex_runner_completes_task_with_target_paths(self) -> None:
+        task = create_task(
+            self.conn,
+            title="README を整備する",
+            agent_id="komiya-sakura",
+            payload={
+                "request": "README.md を追加して quickstart をまとめる",
+                "target_paths": ["README.md"],
+            },
+        )
+        dispatch_ready_tasks(self.conn)
+        with patch("control.codex_runner._git_changed_paths", side_effect=[[], ["README.md"]]), patch(
+            "control.codex_runner._repo_path_exists",
+            return_value=True,
+        ), patch("control.codex_runner._run_codex_exec", return_value={"status": "ok", "last_message": "README.md を追加しました"}):
+            result = run_codex_task(self.conn, task_id=task["task_id"], runner_id="codex")
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["changed_paths"], ["README.md"])
+        self.assertEqual(result["task"]["outputs"][0]["path"], "README.md")
 
 
 if __name__ == "__main__":

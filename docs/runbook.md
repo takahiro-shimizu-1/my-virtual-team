@@ -40,6 +40,22 @@ npm run runtime:task -- route --command development --prompt "API設計レビュ
 npm run runtime:task -- start --command development --prompt "API設計レビューをお願いします" --runner chief
 ```
 
+### Codex 実行
+
+local の Codex runner で doc / code を実際に生成する場合は `codex` subcommand を使う。
+
+```bash
+npm run runtime:task -- codex --prompt "README.md を整備して" --command admin --target-path README.md
+npm run runtime:task -- codex --task-id task-xxxx
+```
+
+意味:
+
+- `--prompt`: single-agent fast path を作ってそのまま Codex が claim / execute / complete する
+- `--task-id`: 既に作成済みの durable task を Codex が引き受ける
+- `--target-path`: 期待成果物の path。指定した file が生成されなければ fail する
+- `--dry-run`: DB を汚さずに route と Codex prompt だけ preview する
+
 ### 複数 phase task
 
 ```bash
@@ -89,7 +105,7 @@ npm run validate:v4
 - `runtime:github-bridge`: GitHub issue / PR event payload を dry run で検証
 - `runtime:health`: queue / lock / recent failures / notifications / skill health を集計
 - `runtime:watch`: `agents/`, `guidelines/`, `templates/`, `.claude/rules/` の差分を `knowledge_diffs` へ記録
-- `ci:verify`: bootstrap + runtime test + representative route/context smoke + clean worktree を一括確認
+- `ci:verify`: bootstrap + runtime test + representative route/context/Codex dry-run smoke + clean worktree を一括確認
 - `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 
 ## GitHub Operations
@@ -104,6 +120,8 @@ npm run validate:v4
 
 `--dry-run` を付けると GitHub へ送信せず payload を確認できる。
 詳細は `docs/github-ops.md`。
+
+GitHub bridge が自動で行うのは route / plan / close までで、実際の repo 変更は local の `runtime:task -- codex ...` か GitHub Copilot assign で進める。
 
 GitHub-hosted smoke test:
 

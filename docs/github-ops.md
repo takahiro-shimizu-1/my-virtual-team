@@ -81,6 +81,8 @@ Comment で以下を使える。
 
 `/vt issue close` は `OWNER / MEMBER / COLLABORATOR` のみ実行できる。
 
+この workflow が自動で行うのは route / plan / close までで、実際の repo 変更は local の `runtime:task -- codex ...` か GitHub Copilot assign で進める。
+
 ## linked task fan-out
 
 task payload に以下を持たせると、`runtime:events` が GitHub にも fan-out する。

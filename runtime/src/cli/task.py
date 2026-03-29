@@ -20,6 +20,7 @@ from control.task_store import (
     heartbeat_task,
     resolve_task_approval,
 )
+from control.codex_runner import preview_codex_task, run_codex_task
 from control.router import route_request
 from control.runner_bridge import plan_request, start_fast_path
 from db.connection import connect_db
@@ -107,6 +108,20 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument("--runner", default="chief")
     start.add_argument("--lease-seconds", type=int, default=300)
 
+    codex = subparsers.add_parser("codex")
+    codex_target = codex.add_mutually_exclusive_group(required=True)
+    codex_target.add_argument("--task-id")
+    codex_target.add_argument("--prompt")
+    codex.add_argument("--command", dest="department_command", default="")
+    codex.add_argument("--created-by", default="chief")
+    codex.add_argument("--source", default="chief")
+    codex.add_argument("--runner", default="codex")
+    codex.add_argument("--lease-seconds", type=int, default=1800)
+    codex.add_argument("--model", default="")
+    codex.add_argument("--timeout-seconds", type=int, default=1200)
+    codex.add_argument("--target-path", action="append", default=[])
+    codex.add_argument("--dry-run", action="store_true")
+
     sweep = subparsers.add_parser("sweep")
 
     return parser
@@ -183,6 +198,73 @@ def main() -> int:
             runner_id=args.runner,
             lease_seconds=args.lease_seconds,
         )
+    elif args.command == "codex":
+        task_id = args.task_id
+        if args.prompt:
+            if args.dry_run:
+                route = route_request(args.prompt, args.department_command)
+                owner = route.get("owner")
+                if not owner:
+                    raise RuntimeError("owner agent could not be resolved")
+                preview_task = {
+                    "task_id": "dry-run",
+                    "title": owner.get("name", owner.get("agent_id", "")),
+                    "description": args.prompt,
+                    "agent_id": owner.get("agent_id", ""),
+                    "payload": {
+                        "request": args.prompt,
+                        "department_command": args.department_command,
+                        "skill_id": (route.get("matched_skill") or {}).get("name", "") or f"agent:{owner.get('agent_id', '')}",
+                        "required_context": route.get("required_context", []),
+                        "workflow_name": "single-agent-fast-path",
+                    },
+                }
+                result = {
+                    "route": route,
+                    "execution": preview_codex_task(
+                        preview_task,
+                        runner_id=args.runner,
+                        output_paths=args.target_path,
+                    ),
+                }
+            else:
+                started = start_fast_path(
+                    conn,
+                    prompt=args.prompt,
+                    command=args.department_command,
+                    created_by=args.created_by,
+                    source=args.source,
+                    runner_id=args.runner,
+                    lease_seconds=args.lease_seconds,
+                )
+                if started.get("status") == "approval_required":
+                    result = started
+                else:
+                    task_id = (started.get("claimed_task") or {}).get("task_id", "")
+                    result = {
+                        "started": started,
+                        "execution": run_codex_task(
+                            conn,
+                            task_id=task_id,
+                            runner_id=args.runner,
+                            lease_seconds=args.lease_seconds,
+                            model=args.model,
+                            timeout_seconds=args.timeout_seconds,
+                            dry_run=args.dry_run,
+                            output_paths=args.target_path,
+                        ),
+                    }
+        else:
+            result = run_codex_task(
+                conn,
+                task_id=task_id,
+                runner_id=args.runner,
+                lease_seconds=args.lease_seconds,
+                model=args.model,
+                timeout_seconds=args.timeout_seconds,
+                dry_run=args.dry_run,
+                output_paths=args.target_path,
+            )
     elif args.command == "sweep":
         result = expire_stale_claims(conn)
     else:

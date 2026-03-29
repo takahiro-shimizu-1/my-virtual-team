@@ -40,12 +40,14 @@
 - `.claude/commands/*.md`
 - `.claude/rules/*.md`
 - `runtime/src/control/runner_bridge.py`
+- `runtime/src/control/codex_runner.py`
 
 責務:
 
 - owner / collaborator の routing
 - tracked fast path と multi-phase workflow の分岐
 - required_context に絞った起動
+- local Codex runner による durable task の実行
 - outputs / handoff の生成
 
 ### Operations Plane
@@ -85,8 +87,9 @@
 2. `start` か `plan --dispatch` で task を DB に登録する
 3. approval pending があれば chief が判断する
 4. runner が claim して実行し、`complete` / `fail` / `timeout` を記録する
-5. event bus が activity log / Slack / Notion / GitHub へ fan-out する
-6. `/health` と watcher で queue / skill / knowledge diff を観測する
+5. local で repo を変更する仕事は `runtime:task -- codex ...` が Codex CLI を呼んで実行する
+6. event bus が activity log / Slack / Notion / GitHub へ fan-out する
+7. `/health` と watcher で queue / skill / knowledge diff を観測する
 
 ## Non-Goals
 
