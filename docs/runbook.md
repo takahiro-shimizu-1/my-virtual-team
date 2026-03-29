@@ -85,7 +85,7 @@ npm run validate:v4
 
 意味:
 
-- `runtime:events`: `task.completed` などを activity log / Slack / Notion / GitHub へ fan-out
+- `runtime:events`: `task.completed` などを activity log / Slack / Notion / GitHub へ fan-out し、既定では queue が空になるまで drain する
 - `runtime:github-bridge`: GitHub issue / PR event payload を dry run で検証
 - `runtime:health`: queue / lock / recent failures / notifications / skill health を集計
 - `runtime:watch`: `agents/`, `guidelines/`, `templates/`, `.claude/rules/` の差分を `knowledge_diffs` へ記録

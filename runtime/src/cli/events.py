@@ -21,6 +21,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Runtime event bus CLI")
     parser.add_argument("command", choices=["publish"])
     parser.add_argument("--limit", type=int, default=50)
+    parser.add_argument("--once", action="store_true")
+    parser.add_argument("--max-rounds", type=int, default=20)
     return parser
 
 
@@ -31,7 +33,20 @@ def main() -> int:
     apply_migrations(conn)
 
     if args.command == "publish":
-        result = publish_pending_events(conn, limit=args.limit)
+        rounds = []
+        total = 0
+        while True:
+            batch = publish_pending_events(conn, limit=args.limit)
+            rounds.append(batch)
+            total += batch["count"]
+            if args.once or batch["count"] == 0 or len(rounds) >= args.max_rounds:
+                break
+        result = {
+            "published": [item for batch in rounds for item in batch["published"]],
+            "count": total,
+            "rounds": len(rounds),
+            "drained": (rounds[-1]["count"] == 0) if rounds else True,
+        }
     else:
         raise RuntimeError(f"unsupported command: {args.command}")
 
