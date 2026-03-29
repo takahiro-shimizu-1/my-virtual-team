@@ -38,7 +38,7 @@ jobs:
         run: python3 runtime/src/cli/maintenance.py run --days 14 --created-by github-actions > /tmp/runtime-maintenance.json
 
       - name: Upload maintenance snapshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: runtime-maintenance-${{ github.run_id }}
           path: /tmp/runtime-maintenance.json

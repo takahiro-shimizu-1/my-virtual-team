@@ -38,7 +38,7 @@ jobs:
           npm run graph:doctor
 
       - name: Upload graph artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gitnexus-graph-weekly-${{ github.run_id }}
           path: .gitnexus/agent-graph.db
