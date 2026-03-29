@@ -13,6 +13,7 @@ if str(INTEGRATIONS_ROOT) not in sys.path:
     sys.path.insert(0, str(INTEGRATIONS_ROOT))
 
 from activity_log import append_activity_entry, build_manual_entry
+from github_ops import add_comment, close_issue, create_issue, update_issue
 from notion import sync_activity_log
 from slack import send_manual_message
 
@@ -36,6 +37,41 @@ def build_parser() -> argparse.ArgumentParser:
 
     notion = subparsers.add_parser("notion-sync")
     notion.add_argument("--mode", choices=["today", "all"], default="today")
+
+    github_issue_create = subparsers.add_parser("github-issue-create")
+    github_issue_create.add_argument("--title", required=True)
+    github_issue_create.add_argument("--body", default="")
+    github_issue_create.add_argument("--label", action="append", default=[])
+    github_issue_create.add_argument("--assignee", action="append", default=[])
+    github_issue_create.add_argument("--milestone", type=int)
+    github_issue_create.add_argument("--repo", default="")
+    github_issue_create.add_argument("--dry-run", action="store_true")
+
+    github_issue_update = subparsers.add_parser("github-issue-update")
+    github_issue_update.add_argument("--issue-number", required=True, type=int)
+    github_issue_update.add_argument("--title")
+    github_issue_update.add_argument("--body")
+    github_issue_update.add_argument("--label", action="append")
+    github_issue_update.add_argument("--assignee", action="append")
+    github_issue_update.add_argument("--milestone", type=int)
+    github_issue_update.add_argument("--state", choices=["open", "closed"])
+    github_issue_update.add_argument("--state-reason", choices=["completed", "not_planned"])
+    github_issue_update.add_argument("--repo", default="")
+    github_issue_update.add_argument("--dry-run", action="store_true")
+
+    github_issue_close = subparsers.add_parser("github-issue-close")
+    github_issue_close.add_argument("--issue-number", required=True, type=int)
+    github_issue_close.add_argument("--comment", default="")
+    github_issue_close.add_argument("--state-reason", choices=["completed", "not_planned"], default="completed")
+    github_issue_close.add_argument("--repo", default="")
+    github_issue_close.add_argument("--dry-run", action="store_true")
+
+    github_comment = subparsers.add_parser("github-comment")
+    github_comment.add_argument("--body", required=True)
+    github_comment.add_argument("--issue-number", type=int)
+    github_comment.add_argument("--pr-number", type=int)
+    github_comment.add_argument("--repo", default="")
+    github_comment.add_argument("--dry-run", action="store_true")
 
     return parser
 
@@ -62,6 +98,45 @@ def main() -> int:
         )
     elif args.command == "notion-sync":
         result = sync_activity_log(mode=args.mode)
+    elif args.command == "github-issue-create":
+        result = create_issue(
+            title=args.title,
+            body=args.body,
+            labels=args.label,
+            assignees=args.assignee,
+            milestone=args.milestone,
+            repo=args.repo or None,
+            dry_run=args.dry_run,
+        )
+    elif args.command == "github-issue-update":
+        result = update_issue(
+            issue_number=args.issue_number,
+            title=args.title,
+            body=args.body,
+            labels=args.label,
+            assignees=args.assignee,
+            milestone=args.milestone,
+            state=args.state,
+            state_reason=args.state_reason,
+            repo=args.repo or None,
+            dry_run=args.dry_run,
+        )
+    elif args.command == "github-issue-close":
+        result = close_issue(
+            issue_number=args.issue_number,
+            repo=args.repo or None,
+            comment=args.comment,
+            state_reason=args.state_reason,
+            dry_run=args.dry_run,
+        )
+    elif args.command == "github-comment":
+        result = add_comment(
+            body=args.body,
+            issue_number=args.issue_number,
+            pr_number=args.pr_number,
+            repo=args.repo or None,
+            dry_run=args.dry_run,
+        )
     else:
         raise RuntimeError(f"unsupported command: {args.command}")
 
@@ -70,4 +145,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        raise SystemExit(1)

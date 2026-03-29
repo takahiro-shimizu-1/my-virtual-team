@@ -106,6 +106,24 @@ Durable state の正本は `.runtime/state.db`。
 2. `.runtime/exports/skill-bus/task-events-YYYY-MM-DD.jsonl` へ mirror export
 3. `notifications` / `notification_deliveries` に fan-out 結果を記録
 
+### GitHub Binding
+
+task payload が GitHub issue / PR と紐づく場合は以下を持てる。
+
+```json
+{
+  "github": {
+    "repo": "owner/repo",
+    "issue_number": 12,
+    "close_on_complete": true
+  }
+}
+```
+
+- `issue_number`: issue comment を送る
+- `pr_number`: PR conversation comment を送る
+- `close_on_complete`: `task.completed` 時に issue を close する
+
 ## Watcher Flow
 
 - `runtime:watch` は watched files の hash を `watch_sources` に保持

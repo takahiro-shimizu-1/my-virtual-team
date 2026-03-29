@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_ROOT) not in sys.path:
@@ -87,6 +88,44 @@ class RuntimeFlowTests(unittest.TestCase):
         self.assertGreaterEqual(result["count"], 1)
         notification_count = self.conn.execute("SELECT COUNT(*) AS count FROM notifications").fetchone()["count"]
         self.assertGreaterEqual(notification_count, 1)
+
+    def test_event_bus_routes_github_for_linked_task(self) -> None:
+        task = create_task(
+            self.conn,
+            title="Issue linked task",
+            agent_id="kirishima-ren",
+            payload={
+                "skill_id": "api-design-review",
+                "github": {
+                    "repo": "example-org/example-repo",
+                    "issue_number": 99,
+                },
+            },
+        )
+        dispatch_ready_tasks(self.conn)
+        self.conn.execute(
+            "UPDATE tasks SET status = 'claimed', current_attempt = 1, claimed_by = 'tester' WHERE task_id = ?",
+            (task["task_id"],),
+        )
+        self.conn.execute(
+            """
+            INSERT INTO task_attempts (task_id, attempt_no, runner_id, status, started_at)
+            VALUES (?, 1, 'tester', 'running', datetime('now'))
+            """,
+            (task["task_id"],),
+        )
+        self.conn.commit()
+        complete_task(self.conn, task["task_id"], ["outputs/test.md"])
+        with patch.dict(
+            "events.bus.HANDLERS",
+            {"github": lambda notification: {"status": "sent", "external_id": "github-comment-1"}},
+        ):
+            result = publish_pending_events(self.conn, limit=20)
+        self.assertTrue(any(item["channel"] == "github" for item in result["published"]))
+        github_notifications = self.conn.execute(
+            "SELECT COUNT(*) AS count FROM notifications WHERE channel = 'github'"
+        ).fetchone()["count"]
+        self.assertGreaterEqual(github_notifications, 1)
 
     def test_watcher_and_health_report(self) -> None:
         watch_root = Path(self.tmpdir.name) / "watched"

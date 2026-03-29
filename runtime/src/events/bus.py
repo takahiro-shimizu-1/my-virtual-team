@@ -12,22 +12,30 @@ if str(INTEGRATIONS_ROOT) not in sys.path:
     sys.path.insert(0, str(INTEGRATIONS_ROOT))
 
 import activity_log
+import github_ops
 import notion
 import slack
 
 CHANNELS_BY_EVENT = {
     "task.created": ["activity_log"],
-    "task.completed": ["activity_log", "slack", "notion"],
-    "task.failed": ["activity_log", "slack", "notion"],
-    "task.timeout": ["activity_log", "slack"],
-    "approval.requested": ["activity_log", "slack"],
+    "task.completed": ["activity_log", "slack", "notion", "github"],
+    "task.failed": ["activity_log", "slack", "notion", "github"],
+    "task.timeout": ["activity_log", "slack", "github"],
+    "approval.requested": ["activity_log", "slack", "github"],
 }
 
 HANDLERS = {
     "activity_log": activity_log.deliver_notification,
+    "github": github_ops.deliver_notification,
     "slack": slack.deliver_notification,
     "notion": notion.deliver_notification,
 }
+
+
+def _should_deliver(channel: str, payload: dict) -> bool:
+    if channel == "github":
+        return github_ops.has_notification_target(payload)
+    return True
 
 
 def _notification_exists(conn, event_id: int, channel: str) -> bool:
@@ -100,6 +108,8 @@ def publish_pending_events(conn, limit: int = 50) -> dict:
         channels = CHANNELS_BY_EVENT.get(row["event_type"], [])
         payload = _build_payload(conn, row)
         for channel in channels:
+            if not _should_deliver(channel, payload):
+                continue
             if _notification_exists(conn, row["event_id"], channel):
                 continue
             notification_id = _record_notification(

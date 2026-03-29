@@ -26,7 +26,7 @@
 - Python 3.11+
 - X アカウントがある場合のみ SocialData API と Grok
 
-`jq` は必須ではない。v4 では activity log / Slack / Notion の wrapper は runtime CLI 経由で動かす。
+`jq` は必須ではない。v4 では activity log / Slack / Notion / GitHub の wrapper は runtime CLI 経由で動かす。
 
 ## 進め方
 
@@ -100,6 +100,7 @@
 - `package.json`
 - `package-lock.json`
 - `.github/workflows/validate.yml`
+- `.github/workflows/github-ops.yml`
 - `CLAUDE.md`
 - `CLAUDE.md.builder`
 - `.gitnexus/workspace.json`
@@ -120,6 +121,9 @@
 - `scripts/log-activity.sh`
 - `scripts/slack-notify.sh`
 - `scripts/notion-sync.sh`
+- `scripts/github-event-bridge.py`
+- `scripts/github-issue.sh`
+- `scripts/github-pr-comment.sh`
 - `docs/architecture.md`
 - `docs/runbook.md`
 - `docs/schema.md`
@@ -189,7 +193,15 @@ rules は以下を生成する。
 
 ### 4-5. integrations
 
-Slack / Notion / activity log は shell script 直実装ではなく、runtime CLI を呼ぶ wrapper にする。
+Slack / Notion / activity log / GitHub は shell script 直実装ではなく、runtime CLI を呼ぶ wrapper にする。
+
+GitHub Issue / PR については以下も生成する。
+
+- `runtime/src/integrations/github_ops.py`
+- `.github/workflows/github-ops.yml`
+- `scripts/github-event-bridge.py`
+
+Issue / PR が開かれた時に route を返し、comment の `/vt route` `/vt plan` を処理できる状態にする。
 
 ## フェーズ5: chief 切り替え
 

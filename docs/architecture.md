@@ -57,12 +57,16 @@
 - `scripts/log-activity.sh`
 - `scripts/slack-notify.sh`
 - `scripts/notion-sync.sh`
+- `scripts/github-issue.sh`
+- `scripts/github-pr-comment.sh`
+- `.github/workflows/github-ops.yml`
 
 責務:
 
-- activity log / Slack / Notion への fan-out
+- activity log / Slack / Notion / GitHub への fan-out
 - queue / lock / failure / skill health の集計
 - local asset diff の検知
+- issue / PR からの route / plan 自動応答
 
 ## SSOT
 
@@ -81,12 +85,12 @@
 2. `start` か `plan --dispatch` で task を DB に登録する
 3. approval pending があれば chief が判断する
 4. runner が claim して実行し、`complete` / `fail` / `timeout` を記録する
-5. event bus が activity log / Slack / Notion へ fan-out する
+5. event bus が activity log / Slack / Notion / GitHub へ fan-out する
 6. `/health` と watcher で queue / skill / knowledge diff を観測する
 
 ## Non-Goals
 
 - OpenClaw 本番連携
-- GitHub / LINE adapter
+- LINE adapter
 - 外部 RSS / competitor watcher
 - JSONL を primary runtime に戻すこと

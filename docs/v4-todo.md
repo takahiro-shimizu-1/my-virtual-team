@@ -47,6 +47,7 @@
 
 - [x] event bus を実装
 - [x] Slack / Notion / activity log を adapter 化
+- [x] GitHub issue / PR adapter を追加
 - [x] local watcher を実装
 - [x] `/health` 相当の集計 CLI を追加
 
@@ -57,6 +58,7 @@
 - [x] 新規生成に必要な出力物一覧を builder へ明記
 - [x] repo-local GitNexus builder / resolver を追加
 - [x] GitHub Actions validation を追加
+- [x] GitHub issue / PR bridge workflow を追加
 - [x] `validate:v4` を追加し builder 完了条件を executable にした
 
 ## Validation
@@ -71,4 +73,5 @@
 - [x] `runtime:watch`
 - [x] `runtime:health`
 - [x] `runtime:events`
+- [x] GitHub issue / PR dry run bridge
 - [x] `validate:v4`
