@@ -8,6 +8,7 @@
   },
   "scripts": {
     "bootstrap": "bash scripts/ensure-v4-ready.sh",
+    "ci:verify": "bash scripts/ci-verify.sh",
     "registry:build": "node scripts/build-registry.js",
     "graph:build": "bash scripts/rebuild-agent-graph.sh",
     "graph:context": "bash scripts/resolve-agent-context.sh",

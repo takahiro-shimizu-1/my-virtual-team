@@ -9,6 +9,7 @@ const REGISTRY_DIR = path.join(ROOT, 'registry');
 const GENERATED_SKILLS_DIR = path.join(ROOT, '.claude', 'skills', 'generated');
 const AGENTS_COMPAT_FILE = path.join(ROOT, 'AGENTS_CLAUDE.md');
 const GITNEXUS_KNOWLEDGE_DIR = path.join(ROOT, '.gitnexus', 'knowledge');
+// Rule-of-thumb estimate for mixed Japanese/English markdown used only for rough context budgeting.
 const BYTES_PER_TOKEN = 3.7;
 const JA_PARTICLES = new Set(['を', 'は', 'が', 'の', 'で', 'に', 'へ', 'と', 'も', 'か']);
 
@@ -277,10 +278,6 @@ function expandSearchTerms(text) {
         .join('');
       if (!cleaned) continue;
       terms.push(cleaned);
-      if (cleaned.length === 1) continue;
-      for (let i = 0; i < cleaned.length - 1; i += 1) {
-        terms.push(cleaned.slice(i, i + 2));
-      }
     }
   }
 

@@ -36,6 +36,13 @@ generated file は参照補助であり、正本として扱わない。
 3. ready task を runner が claim して進める
 4. phase をまたぐ場合は `outputs/` に成果物と handoff を残す
 
+## phase 分割の基準
+
+- 部門や skill が 2 つ以上またがる依頼は phase を分ける
+- draft -> review -> publish のように approval / reviewer 境界があるときは phase を分ける
+- 提案 -> 要件、設計 -> 実装、API設計 -> SNS投稿文のように成果物の種類が変わるときは phase を分ける
+- 1 回の focused execution で完結しない見込みなら `plan --dispatch` を優先する
+
 ## 主要コマンド
 
 - `/strategy`: 事業戦略、要件整理、提案、見積

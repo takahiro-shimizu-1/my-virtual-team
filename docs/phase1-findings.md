@@ -42,3 +42,4 @@
 - generated skill は build step に統合済み
 - chief 側は `route / plan / start` で workflow を切る構成に更新済み
 - repo-local CLI と graph rebuild flow を正式運用にした
+- GitNexus builder / resolver は repo-local copy を標準とし、sibling repo 依存を外した

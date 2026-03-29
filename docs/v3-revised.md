@@ -408,7 +408,7 @@ execution_mode: direct
       "role": "primary",
       "os": "linux",
       "access": { "type": "local" },
-      "workspace_root": "/home/shimizu/study/AI/my-virtual-team-20260329t000730z-1-001/my-virtual-team",
+      "workspace_root": ".",
       "services": ["claude-code", "gitnexus"]
     }
   ],

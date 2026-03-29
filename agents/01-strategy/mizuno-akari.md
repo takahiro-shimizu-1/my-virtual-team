@@ -39,9 +39,7 @@ execution_mode: tracked_fast_path
 - 業務フロー図（テキストベース）
 
 ## コンテキスト参照
-- `always`: guidelines/company-overview.md, guidelines/output-standards.md
-- `on_demand`: guidelines/brand-guidelines.md
-- `never`: guidelines/security-policy.md, guidelines/escalation-rules.md, guidelines/philosophy.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
+- 正本: 具体的な参照先の一覧は frontmatter の `context_refs` を使う
 - 方針: 通常起動ではヒアリングと要件整理に必要な最小情報だけを読み、対外文面やブランド調整が必要なときだけ補助資料を追加する
 
 ## 連携先

@@ -39,9 +39,7 @@ execution_mode: tracked_fast_path
 - アクションプラン（優先度付きタスクリスト）
 
 ## コンテキスト参照
-- `always`: guidelines/company-overview.md, guidelines/output-standards.md
-- `on_demand`: guidelines/brand-guidelines.md, guidelines/philosophy.md
-- `never`: guidelines/security-policy.md, guidelines/escalation-rules.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
+- 正本: 具体的な参照先の一覧は frontmatter の `context_refs` を使う
 - 方針: 通常起動では事業前提と出力基準だけを読み、思想やブランドトーンは必要時に追加する
 
 ## 連携先

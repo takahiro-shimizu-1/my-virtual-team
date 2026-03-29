@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ REQUIRED_PATHS = [
     ".gitignore",
     "package.json",
     "package-lock.json",
+    ".github/workflows/validate.yml",
     "CLAUDE.md",
     "CLAUDE.md.builder",
     ".gitnexus/workspace.json",
@@ -22,11 +24,14 @@ REQUIRED_PATHS = [
     "docs/schema.md",
     "docs/builder-migration.md",
     "docs/v4-todo.md",
+    "scripts/ci-verify.sh",
     "scripts/ensure-v4-ready.sh",
     "scripts/build-registry.js",
     "scripts/rebuild-agent-graph.sh",
     "scripts/resolve-agent-context.sh",
     "scripts/runtime-task.sh",
+    "runtime/src/gitnexus/agent_graph_builder.py",
+    "runtime/src/gitnexus/context_resolver.py",
     "registry/agents.generated.json",
     "registry/context-policy.generated.json",
     "registry/skills.generated.json",
@@ -110,13 +115,22 @@ def check_required_paths(errors: list[str]) -> None:
 
 def check_agents(errors: list[str]) -> None:
     for path in sorted((ROOT / "agents").rglob("*.md")):
-        frontmatter = parse_frontmatter(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        frontmatter = parse_frontmatter(text)
         if not frontmatter:
             errors.append(f"agent frontmatter missing: {path.relative_to(ROOT)}")
             continue
         for key in REQUIRED_AGENT_KEYS:
             if key not in frontmatter:
                 errors.append(f"agent frontmatter key missing: {path.relative_to(ROOT)} -> {key}")
+        body = text
+        if text.startswith("---\n"):
+            end = text.find("\n---\n", 4)
+            if end != -1:
+                body = text[end + 5 :]
+        for pattern in ["- `always`:", "- `on_demand`:", "- `never`:"]:
+            if pattern in body:
+                errors.append(f"agent body duplicates context_refs SSOT: {path.relative_to(ROOT)} -> {pattern}")
 
 
 def check_registries(errors: list[str]) -> None:
@@ -151,6 +165,36 @@ def check_pycache(errors: list[str]) -> None:
             errors.append(f"tracked cache artifact found: {path}")
 
 
+def _is_absoluteish(value: str) -> bool:
+    return value.startswith("/") or value.startswith("~") or bool(re.match(r"^[A-Za-z]:[\\\\/]", value))
+
+
+def check_workspace_portability(errors: list[str]) -> None:
+    data = json.loads((ROOT / ".gitnexus/workspace.json").read_text(encoding="utf-8"))
+    for label, value in [("workspace_root", data.get("workspace_root", ""))]:
+        if isinstance(value, str) and _is_absoluteish(value):
+            errors.append(f"workspace path must be relative: {label} -> {value}")
+    for node in data.get("nodes", []):
+        value = node.get("workspace_root", "")
+        if isinstance(value, str) and _is_absoluteish(value):
+            errors.append(f"workspace path must be relative: nodes[{node.get('id', '?')}].workspace_root -> {value}")
+
+
+def check_docs_for_absolute_paths(errors: list[str]) -> None:
+    targets = [
+        ROOT / "docs",
+        ROOT / "CLAUDE.md",
+        ROOT / "CLAUDE.md.builder",
+        ROOT / "DESIGN_CONSTRAINTS.md",
+    ]
+    for target in targets:
+        paths = target.rglob("*.md") if target.is_dir() else [target]
+        for path in paths:
+            text = path.read_text(encoding="utf-8")
+            if "/home/shimizu/" in text:
+                errors.append(f"hardcoded absolute path found in markdown: {path.relative_to(ROOT)}")
+
+
 def main() -> int:
     errors: list[str] = []
     check_required_paths(errors)
@@ -158,6 +202,8 @@ def main() -> int:
     check_registries(errors)
     check_active_docs(errors)
     check_pycache(errors)
+    check_workspace_portability(errors)
+    check_docs_for_absolute_paths(errors)
 
     payload = {
         "status": "ok" if not errors else "error",

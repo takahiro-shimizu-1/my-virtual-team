@@ -39,9 +39,7 @@ AI・テクノロジー分野の最新動向を体系的に調査・整理する
 - 論文要約（概要・手法・結果・示唆）
 
 ## コンテキスト参照
-- `always`: guidelines/company-overview.md, guidelines/output-standards.md
-- `on_demand`: guidelines/security-policy.md
-- `never`: guidelines/brand-guidelines.md, guidelines/escalation-rules.md, guidelines/philosophy.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
+- 正本: 具体的な参照先の一覧は frontmatter の `context_refs` を使う
 - 方針: 調査では出典管理と出力基準を優先し、機密性や外部共有可否に関わるテーマだけ security-policy を追加する
 
 ## 連携先

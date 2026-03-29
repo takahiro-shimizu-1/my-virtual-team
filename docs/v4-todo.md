@@ -12,7 +12,7 @@
 - [x] `guidelines/top-posts-summary.md` を追加
 - [x] `guidelines/top-posts-top20.md` を追加
 - [x] 全 agent に frontmatter を追加
-- [x] 全 agent の context tier を本文にも反映
+- [x] 全 agent の frontmatter を SSOT にし、本文は参照方針だけに整理
 - [x] `scripts/build-registry.js` を追加
 - [x] `AGENTS_CLAUDE.md` 生成を registry build に統合
 - [x] `.gitnexus/knowledge/` curated mirror を生成
@@ -55,10 +55,13 @@
 - [x] `docs/builder-migration.md` を追加
 - [x] `CLAUDE.md.builder` に v4 出力契約を追記
 - [x] 新規生成に必要な出力物一覧を builder へ明記
+- [x] repo-local GitNexus builder / resolver を追加
+- [x] GitHub Actions validation を追加
 - [x] `validate:v4` を追加し builder 完了条件を executable にした
 
 ## Validation
 
+- [x] `npm run ci:verify`
 - [x] `npm run registry:build`
 - [x] `npm run graph:build`
 - [x] `npm run runtime:migrate`

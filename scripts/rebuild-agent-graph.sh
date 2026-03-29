@@ -3,7 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DB_PATH="$ROOT/.gitnexus/agent-graph.db"
-BUILDER_PY="${GITNEXUS_AGENT_GRAPH_BUILDER:-$ROOT/../gitnexus-stable-ops/lib/agent_graph_builder.py}"
+LOCAL_BUILDER_PY="$ROOT/runtime/src/gitnexus/agent_graph_builder.py"
+BUILDER_PY="${GITNEXUS_AGENT_GRAPH_BUILDER:-}"
 USE_GNI=0
 FORCE=0
 QUIET=0
@@ -19,12 +20,18 @@ for arg in "$@"; do
   esac
 done
 
+if [[ -z "$BUILDER_PY" ]]; then
+  if [[ -f "$LOCAL_BUILDER_PY" ]]; then
+    BUILDER_PY="$LOCAL_BUILDER_PY"
+  fi
+fi
+
 if command -v gni >/dev/null 2>&1; then
   USE_GNI=1
 fi
 
 if [[ ! -f "$BUILDER_PY" && "$USE_GNI" -ne 1 ]]; then
-  echo "GitNexus builder not found. Set GITNEXUS_AGENT_GRAPH_BUILDER or install gitnexus-stable-ops." >&2
+  echo "GitNexus builder not found. Use the repo-local runtime/src/gitnexus copy, set GITNEXUS_AGENT_GRAPH_BUILDER, or install gni." >&2
   exit 1
 fi
 

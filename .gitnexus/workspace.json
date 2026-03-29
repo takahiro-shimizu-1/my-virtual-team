@@ -1,6 +1,6 @@
 {
   "version": "1.1",
-  "workspace_root": "my-virtual-team",
+  "workspace_root": ".",
   "description": "v4 migration workspace manifest for my-virtual-team",
   "nodes": [
     {
@@ -11,7 +11,7 @@
       "access": {
         "type": "local"
       },
-      "workspace_root": "/home/shimizu/study/AI/my-virtual-team-20260329t000730z-1-001/my-virtual-team",
+      "workspace_root": ".",
       "services": [
         "chief",
         "gitnexus",

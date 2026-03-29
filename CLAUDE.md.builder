@@ -99,6 +99,7 @@
 - `.gitignore`
 - `package.json`
 - `package-lock.json`
+- `.github/workflows/validate.yml`
 - `CLAUDE.md`
 - `CLAUDE.md.builder`
 - `.gitnexus/workspace.json`
@@ -109,8 +110,12 @@
 - `templates/`
 - `registry/`
 - `runtime/`
+- `runtime/src/gitnexus/agent_graph_builder.py`
+- `runtime/src/gitnexus/context_resolver.py`
 - `scripts/build-registry.js`
+- `scripts/ci-verify.sh`
 - `scripts/rebuild-agent-graph.sh`
+- `scripts/resolve-agent-context.sh`
 - `scripts/runtime-task.sh`
 - `scripts/log-activity.sh`
 - `scripts/slack-notify.sh`
@@ -149,6 +154,8 @@ execution_mode: tracked_fast_path
 - アウトプット形式
 - 連携先
 - 判断基準
+
+`## コンテキスト参照` セクションには具体的なファイル一覧を重複記載せず、frontmatter の `context_refs` を正本として参照方針だけを書く。
 
 ### 4-3. command / rules
 
@@ -206,6 +213,7 @@ Slack / Notion / activity log は shell script 直実装ではなく、runtime C
 builder 完了時に以下を実行し、失敗したら原因調査して修正する。
 
 ```bash
+npm run ci:verify
 npm run registry:build
 npm run graph:build
 npm run runtime:migrate

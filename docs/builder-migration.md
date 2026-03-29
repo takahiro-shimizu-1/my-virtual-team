@@ -8,6 +8,7 @@
 
 - `.gitignore`
 - `package.json`
+- `.github/workflows/validate.yml`
 - `outputs/.gitkeep`
 - `logs/.gitkeep`
 - `.gitnexus/workspace.json`
@@ -18,7 +19,10 @@
 - `runtime/src/integrations/`
 - `runtime/src/health/`
 - `runtime/src/watchers/`
+- `runtime/src/gitnexus/agent_graph_builder.py`
+- `runtime/src/gitnexus/context_resolver.py`
 - `scripts/build-registry.js`
+- `scripts/ci-verify.sh`
 - `scripts/ensure-v4-ready.sh`
 - `scripts/rebuild-agent-graph.sh`
 - `scripts/resolve-agent-context.sh`
@@ -37,6 +41,7 @@
 5. builder 完了時に以下を実行できる状態にする
 
 ```bash
+npm run ci:verify
 npm run bootstrap
 npm run registry:build
 npm run graph:build
@@ -60,6 +65,7 @@ npm run validate:v4
 
 - `route / plan / start / approve` 前提
 - SQLite durable store
+- repo-local GitNexus builder / resolver
 - event-driven integrations
 - watcher / health / graph freshness まで含めて完成
 - `runtime:task` と `graph:context` は通常利用で self-healing に動く

@@ -39,9 +39,7 @@ execution_mode: tracked_fast_path
 - 見積書ドラフト
 
 ## コンテキスト参照
-- `always`: guidelines/company-overview.md, guidelines/output-standards.md
-- `on_demand`: guidelines/brand-guidelines.md, guidelines/philosophy.md
-- `never`: guidelines/security-policy.md, guidelines/escalation-rules.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
+- 正本: 具体的な参照先の一覧は frontmatter の `context_refs` を使う
 - 方針: 提案の骨子は事業前提と出力基準だけで組み、トーン調整や思想の一貫性が必要な場面で追加参照する
 
 ## 連携先

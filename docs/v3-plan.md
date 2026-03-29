@@ -29,7 +29,7 @@
 
 ## 2. なぜ v2-plan では足りないか
 
-既存の [`v2-plan.md`](/home/shimizu/study/AI/my-virtual-team-20260329t000730z-1-001/my-virtual-team/docs/v2-plan.md) は方向性の一部は正しいものの、症状への対処に留まっています。
+既存の [`v2-plan.md`](v2-plan.md) は方向性の一部は正しいものの、症状への対処に留まっています。
 
 ### v2 の良い点
 

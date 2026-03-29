@@ -40,9 +40,7 @@ execution_mode: tracked_fast_path
 - 月次サマリー（収支概要）
 
 ## コンテキスト参照
-- `always`: guidelines/company-overview.md, guidelines/output-standards.md
-- `on_demand`: guidelines/security-policy.md, guidelines/escalation-rules.md
-- `never`: guidelines/brand-guidelines.md, guidelines/philosophy.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
+- 正本: 具体的な参照先の一覧は frontmatter の `context_refs` を使う
 - 方針: 通常起動では事業前提と出力基準だけを読み、金額判断や機密情報を含む作業のときだけ補助ルールを追加する
 
 ## 連携先

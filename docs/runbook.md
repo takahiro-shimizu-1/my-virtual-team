@@ -7,6 +7,7 @@ npm run bootstrap
 ```
 
 fresh clone 直後や builder 生成直後はこれを 1 回流せばよい。通常利用では `runtime:task` と `graph:context` が必要な準備を自動で実行する。
+GitHub Actions では `.github/workflows/validate.yml` が同じ検証を `npm run ci:verify` で流す。
 
 または個別に:
 
@@ -76,6 +77,7 @@ npm run runtime:task -- sweep
 npm run runtime:events
 npm run runtime:health
 npm run runtime:watch
+npm run ci:verify
 npm run validate:v4
 ```
 
@@ -84,6 +86,7 @@ npm run validate:v4
 - `runtime:events`: `task.completed` などを activity log / Slack / Notion へ fan-out
 - `runtime:health`: queue / lock / recent failures / notifications / skill health を集計
 - `runtime:watch`: `agents/`, `guidelines/`, `templates/`, `.claude/rules/` の差分を `knowledge_diffs` へ記録
+- `ci:verify`: bootstrap + runtime test + representative route/context smoke + clean worktree を一括確認
 - `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 
 ## stale graph 対処

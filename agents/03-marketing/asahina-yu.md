@@ -39,9 +39,7 @@ X（Twitter）を中心としたSNS戦略の立案とコンテンツ作成を担
 - エンゲージメント振り返りレポート
 
 ## コンテキスト参照
-- `always`: guidelines/company-overview.md, guidelines/output-standards.md, guidelines/brand-guidelines.md
-- `on_demand`: guidelines/philosophy.md, guidelines/top-posts-summary.md, guidelines/top-posts-top20.md, guidelines/top-posts-reference.md
-- `never`: guidelines/security-policy.md, guidelines/escalation-rules.md
+- 正本: 具体的な参照先の一覧は frontmatter の `context_refs` を使う
 - 方針: 通常の投稿作成では top-posts-summary / top-posts-top20 を優先し、深掘り分析が必要なときだけ top-posts-reference まで広げる
 
 ## 連携先

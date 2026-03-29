@@ -11,11 +11,12 @@
 - Phase 2: SQLite durable store、task lifecycle、approval / retry / timeout、JSONL mirror
 - Phase 3: chief 縮小、route / plan / start / approve、department command 更新
 - Phase 4: event bus、activity log / Slack / Notion adapter、health、local watcher
-- Phase 5: builder migration、`validate:v4`、runbook / schema / architecture / todo 更新
+- Phase 5: builder migration、repo-local GitNexus、GitHub Actions validation、`validate:v4`、runbook / schema / architecture / todo 更新
 
 ## 現在の運用コマンド
 
 ```bash
+npm run ci:verify
 npm run bootstrap
 npm run registry:build
 npm run graph:build
@@ -29,6 +30,7 @@ npm run validate:v4
 
 通常利用では `runtime:task` が registry build と migrate を自動実行し、`graph:context` は graph freshness を自動で整える。
 registry 生成物は内容が変わらない限り再書き込みしないため、普段の task 実行で repo が毎回 dirty になることもない。
+GitHub 上では `.github/workflows/validate.yml` が同じ検証を走らせる。
 
 ## representative behavior
 

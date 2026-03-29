@@ -1,7 +1,7 @@
 # my-virtual-team v4 完全実装計画
 
 **作成日**: 2026-03-29  
-**位置づけ**: [`v3-plan.md`](/home/shimizu/study/AI/my-virtual-team-20260329t000730z-1-001/my-virtual-team/docs/v3-plan.md) と [`v3-revised.md`](/home/shimizu/study/AI/my-virtual-team-20260329t000730z-1-001/my-virtual-team/docs/v3-revised.md) を統合し、過剰設計を削り、実装順序・SSOT・永続化・運用まで一本化した最終版
+**位置づけ**: [`v3-plan.md`](v3-plan.md) と [`v3-revised.md`](v3-revised.md) を統合し、過剰設計を削り、実装順序・SSOT・永続化・運用まで一本化した最終版
 
 ---
 
