@@ -99,6 +99,7 @@ npm run runtime:skill-analyze
 npm run runtime:self-improve -- --dry-run
 npm run runtime:github-bridge -- handle --event-name issues --event-path event.json --dry-run
 npm run github:labels
+npm run github:agent-task -- issue --issue-number 7 --dry-run
 npm run ci:verify
 npm run validate:v4
 ```
@@ -113,6 +114,7 @@ npm run validate:v4
 - `runtime:skill-analyze`: `skill_runs` から avg / recent / trend / flagged を計算する
 - `runtime:self-improve`: flagged skill を improvement task として enqueue する
 - `github:labels`: GitHub automation に必要な label (`auto`, `copilot`, `claude`, `codex`, `needs-human`) を揃える
+- `github:agent-task`: `gh agent-task create` を使って subscription-native coding agent を起動する
 - `ci:verify`: bootstrap + runtime test + representative route/context/Codex dry-run smoke + clean worktree を一括確認
 - `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 
@@ -141,6 +143,7 @@ native agent defaults:
 
 - implementation: repo variable `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` or `copilot-swe-agent`
 - PR mention: repo variable `VIRTUAL_TEAM_PR_AGENT_MENTION` or `@copilot`
+- user-authenticated kickoff: `npm run github:agent-task -- issue --issue-number <n> --follow`
 
 定期運用 workflow:
 

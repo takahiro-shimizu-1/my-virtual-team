@@ -51,6 +51,14 @@ Native coding agent へ assign:
 
 `github-issue-create --assignee copilot-swe-agent` も内部で GraphQL assign にフォールバックする。
 
+user-authenticated subscription route:
+
+```bash
+npm run github:agent-task -- issue --issue-number 7 --follow
+```
+
+これは `gh agent-task create` を使う。GitHub Actions bot token では native agent が見えない場合でも、Copilot / third-party agent を使えるユーザーの `gh auth` で起動できる。
+
 ## 自動 workflow
 
 `.github/workflows/github-ops.yml` は以下で動く。
@@ -113,6 +121,15 @@ task payload に以下を持たせると、`runtime:events` が GitHub にも fa
 
 この repo では既定で `copilot-swe-agent` を implementation agent として扱う。  
 GitHub 側で Anthropic Claude や OpenAI Codex の third-party agent を有効化している場合は、repo variable を変えるだけで native route を切り替えられる。
+
+実運用上は 2 つの path がある。
+
+- GitHub-hosted best effort:
+  issue label -> workflow -> native agent assign
+- user-authenticated default:
+  `gh agent-task create` を wrapper 経由で起動
+
+後者は GitHub subscription に紐づくユーザー文脈で起動するため、vendor API key なしで native agent を動かせる。
 
 実測では以下が確認できた。
 
