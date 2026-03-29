@@ -49,9 +49,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ steps.assign.outputs.status }}" = "0" ]; then
-            BODY="Native coding agent \`${{ steps.assign.outputs.agent_login }}\` has been assigned to this issue."
+            BODY="Native coding agent ${{ steps.assign.outputs.agent_login }} has been assigned to this issue."
           else
-            BODY="⚠️ Native coding agent assignment did not complete for \`${{ steps.assign.outputs.agent_login }}\`.\n\nPlease confirm the agent is enabled in GitHub Copilot policies for this repo/account, or set `VIRTUAL_TEAM_IMPLEMENTATION_AGENT` to an available agent login."
+            BODY="⚠️ Native coding agent assignment did not complete for ${{ steps.assign.outputs.agent_login }}.\n\nPlease confirm the agent is enabled in GitHub Copilot policies for this repo/account, or set VIRTUAL_TEAM_IMPLEMENTATION_AGENT to an available agent login."
           fi
           gh issue comment ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \

@@ -98,6 +98,7 @@ npm run runtime:maintain -- --dry-run
 npm run runtime:skill-analyze
 npm run runtime:self-improve -- --dry-run
 npm run runtime:github-bridge -- handle --event-name issues --event-path event.json --dry-run
+npm run github:labels
 npm run ci:verify
 npm run validate:v4
 ```
@@ -111,6 +112,7 @@ npm run validate:v4
 - `runtime:maintain`: watcher -> knowledge revalidation -> self-improve -> events -> health を 1 回通し実行する
 - `runtime:skill-analyze`: `skill_runs` から avg / recent / trend / flagged を計算する
 - `runtime:self-improve`: flagged skill を improvement task として enqueue する
+- `github:labels`: GitHub automation に必要な label (`auto`, `copilot`, `claude`, `codex`, `needs-human`) を揃える
 - `ci:verify`: bootstrap + runtime test + representative route/context/Codex dry-run smoke + clean worktree を一括確認
 - `validate:v4`: active docs と runtime 構成が v4 契約を守っているか確認
 

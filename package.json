@@ -28,6 +28,7 @@
     "runtime:skill-analyze": "python3 runtime/src/cli/skill_improve.py analyze",
     "runtime:self-improve": "python3 runtime/src/cli/skill_improve.py enqueue",
     "runtime:maintain": "python3 runtime/src/cli/maintenance.py run",
+    "github:labels": "bash scripts/ensure-github-labels.sh",
     "runtime:test": "python3 -m unittest discover -s runtime/tests -p 'test_*.py'",
     "validate:v4": "python3 scripts/validate-v4-team.py"
   }

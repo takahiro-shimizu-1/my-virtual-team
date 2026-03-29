@@ -41,6 +41,7 @@ REQUIRED_PATHS = [
     "scripts/ci-verify.sh",
     "scripts/ensure-v4-ready.sh",
     "scripts/build-registry.js",
+    "scripts/ensure-github-labels.sh",
     "scripts/gitnexus-doctor.sh",
     "scripts/gitnexus-install-hooks.sh",
     "scripts/gitnexus-smoke-test.sh",
